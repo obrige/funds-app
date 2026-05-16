@@ -3,6 +3,8 @@ package com.fundhelper.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -29,46 +31,89 @@ fun IndexBar(
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        indices.forEach { item ->
-            val color = if ((item.quote?.changeRate ?: 0.0) >= 0) UpRed else DownGreen
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .clickable(enabled = !isEditing) { }
-                    .padding(horizontal = 6.dp, vertical = 8.dp)
-            ) {
-                if (isEditing) {
-                    IconButton(
-                        onClick = { onRemoveIndex(item.entity.secId) },
-                        modifier = Modifier.size(16.dp).align(Alignment.TopEnd)
-                    ) {
-                        Icon(Icons.Default.Close, "删除", modifier = Modifier.size(12.dp))
+    Column {
+        // 指数横向滚动显示
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            indices.take(4).forEach { item ->
+                val color = if ((item.quote?.changeRate ?: 0.0) >= 0) UpRed else DownGreen
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .clickable(enabled = !isEditing) { }
+                        .padding(horizontal = 6.dp, vertical = 8.dp)
+                ) {
+                    if (isEditing) {
+                        IconButton(
+                            onClick = { onRemoveIndex(item.entity.secId) },
+                            modifier = Modifier.size(16.dp).align(Alignment.TopEnd)
+                        ) {
+                            Icon(Icons.Default.Close, "删除", modifier = Modifier.size(12.dp))
+                        }
                     }
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(item.entity.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                    Text(item.quote?.price?.toString() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
-                    Text(item.quote?.changeRate?.formatPercent() ?: "--", fontSize = 11.sp, color = color)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(item.entity.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                        Text(item.quote?.price?.toString() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
+                        Text(item.quote?.changeRate?.formatPercent() ?: "--", fontSize = 11.sp, color = color)
+                    }
                 }
             }
         }
 
-        if (isEditing && indices.size < 4) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { showAddDialog = true }
-                    .padding(horizontal = 6.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
+        // 超过4个指数时显示第二行
+        if (indices.size > 4) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Text("+ 添加", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                indices.drop(4).forEach { item ->
+                    val color = if ((item.quote?.changeRate ?: 0.0) >= 0) UpRed else DownGreen
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .clickable(enabled = !isEditing) { }
+                            .padding(horizontal = 6.dp, vertical = 8.dp)
+                    ) {
+                        if (isEditing) {
+                            IconButton(
+                                onClick = { onRemoveIndex(item.entity.secId) },
+                                modifier = Modifier.size(16.dp).align(Alignment.TopEnd)
+                            ) {
+                                Icon(Icons.Default.Close, "删除", modifier = Modifier.size(12.dp))
+                            }
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(item.entity.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                            Text(item.quote?.price?.toString() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
+                            Text(item.quote?.changeRate?.formatPercent() ?: "--", fontSize = 11.sp, color = color)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 编辑模式下显示添加按钮
+        if (isEditing && indices.size < 8) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { showAddDialog = true }
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("+ 添加指数", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                }
             }
         }
     }
@@ -95,8 +140,8 @@ fun AddIndexDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加指数") },
         text = {
-            Column {
-                Constants.AVAILABLE_INDICES.forEach { (secId, name, code) ->
+            LazyColumn {
+                items(Constants.AVAILABLE_INDICES) { (secId, name, code) ->
                     val exists = existingIds.contains(secId)
                     Row(
                         modifier = Modifier
