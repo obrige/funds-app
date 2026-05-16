@@ -39,15 +39,16 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun FundHelperTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    forceDark: Boolean? = null,
     content: @Composable () -> Unit
 ) {
+    val isDark = forceDark ?: darkTheme
     val colorScheme = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context)
-            else dynamicLightColorScheme(context)
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
+        isDark -> DarkColorScheme
         else -> LightColorScheme
     }
 
