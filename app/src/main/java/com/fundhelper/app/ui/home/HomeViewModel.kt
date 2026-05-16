@@ -7,6 +7,9 @@ import com.fundhelper.app.data.model.*
 import com.fundhelper.app.data.repository.FundRepository
 import com.fundhelper.app.util.TradingTimeUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -103,40 +106,30 @@ class HomeViewModel @Inject constructor(
         val displayItems = currentFunds.map { entity ->
             val data = apiData.find { it.code == entity.code }
             val shares = entity.shares
-            val nav = data?.nav ?: 0.0      // NAV - 最新单位净值
-            val gsz = data?.gsz ?: nav       // GSZ - 估算净值
-            val gszzl = data?.gszzl ?: 0.0   // GSZZL - 估算涨跌幅(%)
-            val navChangeRate = data?.navChangeRate ?: 0.0  // NAVCHGRT - 净值涨跌幅(%)
+            val nav = data?.nav ?: 0.0
+            val gsz = data?.gsz ?: nav
+            val gszzl = data?.gszzl ?: 0.0
+            val navChangeRate = data?.navChangeRate ?: 0.0
 
-            // 判断净值是否已更新 (与原项目一致: PDATE == GZTIME.substr(0,10))
             val hasReplace = data?.pDate != null && data.gzTime != null
                     && data.pDate == data.gzTime.take(10)
 
-            // 有效净值: 净值已更新用NAV, 否则用估算值GSZ
             val effectiveNav = if (hasReplace) nav else gsz
-            // 有效涨跌幅: 净值已更新用NAVCHGRT, 否则用GSZZL
             val effectiveRate = if (hasReplace) navChangeRate else gszzl
 
-            // 持有额 = 最新净值 * 份额 (始终用NAV, 与原项目一致)
             val amount = nav * shares
-
-            // 日估算收益 (与原项目 gains 计算一致)
             val gains = if (shares > 0 && data != null) {
                 if (hasReplace) {
-                    // 净值已更新: (NAV - NAV / (1 + NAVCHGRT/100)) * shares
                     (nav - nav / (1 + navChangeRate * 0.01)) * shares
                 } else {
-                    // 净值未更新: (GSZ - NAV) * shares
                     (gsz - nav) * shares
                 }
             } else 0.0
 
-            // 持有收益 (与原项目 costGains 计算一致)
             val costGains = if (entity.costPrice > 0 && shares > 0) {
                 (effectiveNav - entity.costPrice) * shares
             } else 0.0
 
-            // 持有收益率 (与原项目 costGainsRate 计算一致)
             val costGainsRate = if (entity.costPrice > 0) {
                 (effectiveNav - entity.costPrice) / entity.costPrice * 100
             } else 0.0
@@ -154,11 +147,25 @@ class HomeViewModel @Inject constructor(
             )
         }
 
+        // 并行获取基金概况（近一年收益率 + 净值日期）
+        val enrichedItems = coroutineScope {
+            displayItems.map { item ->
+                async {
+                    val info = repository.getFundInfo(item.entity.code)?.Datas
+                    item.copy(
+                        return1Y = info?.return1Y,
+                        fundNav = info?.nav ?: item.fundData?.nav,
+                        navDate = info?.navDate ?: item.fundData?.pDate
+                    )
+                }
+            }.awaitAll()
+        }
+
         val totalGainRate = if (totalAmount > 0) totalGain / totalAmount * 100 else 0.0
 
         _uiState.update {
             it.copy(
-                funds = displayItems,
+                funds = enrichedItems,
                 totalAmount = totalAmount,
                 totalGain = totalGain,
                 totalGainRate = totalGainRate,
