@@ -17,12 +17,10 @@ class FundRepository @Inject constructor(
     private val indexDao: IndexDao,
     private val groupDao: GroupDao
 ) {
-    // ========== Fund Operations ==========
     fun getAllFunds(): Flow<List<FundEntity>> = fundDao.getAllFunds()
 
     fun getFundsByGroup(group: String): Flow<List<FundEntity>> =
-        if (group == "全部") fundDao.getAllFunds()
-        else fundDao.getFundsByGroup(group)
+        if (group == "全部") fundDao.getAllFunds() else fundDao.getFundsByGroup(group)
 
     suspend fun addFund(code: String, name: String, group: String = "默认分组") {
         val existing = fundDao.getFundByCode(code)
@@ -45,38 +43,27 @@ class FundRepository @Inject constructor(
 
     suspend fun importFunds(funds: List<FundEntity>) = fundDao.insertFunds(funds)
 
-    // ========== Fund Data (API) ==========
     suspend fun searchFunds(keyword: String): List<FundSearchItem> {
-        return try {
-            val response = fundApi.searchFund(keyword = keyword)
-            response.Datas ?: emptyList()
-        } catch (e: Exception) { emptyList() }
+        return try { fundApi.searchFund(keyword = keyword).Datas ?: emptyList() } catch (e: Exception) { emptyList() }
     }
 
     suspend fun getFundRealtimeData(codes: String): List<FundDataItem> {
         if (codes.isBlank()) return emptyList()
-        return try {
-            val response = fundApi.getFundRealtimeData(codes = codes)
-            response.Datas ?: emptyList()
-        } catch (e: Exception) { emptyList() }
+        return try { fundApi.getFundRealtimeData(codes = codes).Datas ?: emptyList() } catch (e: Exception) { emptyList() }
     }
 
-    // 估值走势图 (FundVarietieValuationDetail.ashx)
     suspend fun getFundTrend(code: String): FundTrendResponse? {
         return try { fundApi.getFundTrend(code = code) } catch (e: Exception) { null }
     }
 
-    // 历史净值图 (FundNetDiagram.ashx) - 支持时间范围
     suspend fun getFundNetDiagram(code: String, range: String = "y"): FundNetDiagramResponse? {
         return try { fundApi.getFundNetDiagram(code = code, range = range) } catch (e: Exception) { null }
     }
 
-    // 累计收益图 (FundYieldDiagramNew.ashx) - 支持时间范围
     suspend fun getFundYieldDiagram(code: String, range: String = "y"): FundYieldDiagramResponse? {
         return try { fundApi.getFundYieldDiagram(code = code, range = range) } catch (e: Exception) { null }
     }
 
-    // 历史净值列表 (FundMNHisNetList)
     suspend fun getFundHistoryNav(code: String): FundHistoryNavResponse? {
         return try { fundApi.getFundHistoryNav(code = code) } catch (e: Exception) { null }
     }
@@ -93,11 +80,11 @@ class FundRepository @Inject constructor(
         return try { fundApi.getFundManager(code = code) } catch (e: Exception) { null }
     }
 
-    // ========== Index Operations ==========
+    // Index - no limit on count
     fun getAllIndices(): Flow<List<IndexEntity>> = indexDao.getAllIndices()
 
     suspend fun addIndex(index: IndexEntity) {
-        if (indexDao.getCount() < 4) { indexDao.insertIndex(index) }
+        indexDao.insertIndex(index)
     }
 
     suspend fun removeIndex(secId: String) = indexDao.deleteBySecId(secId)
@@ -113,18 +100,13 @@ class FundRepository @Inject constructor(
     }
 
     suspend fun getIndexQuotes(secIds: String): List<IndexQuoteItem> {
-        return try {
-            val response = fundApi.getIndexQuote(secIds = secIds)
-            response.data?.diff ?: emptyList()
-        } catch (e: Exception) { emptyList() }
+        return try { fundApi.getIndexQuote(secIds = secIds).data?.diff ?: emptyList() } catch (e: Exception) { emptyList() }
     }
 
-    // ========== Group Operations ==========
     fun getAllGroups(): Flow<List<GroupEntity>> = groupDao.getAllGroups()
     suspend fun addGroup(name: String): Long = groupDao.insertGroup(GroupEntity(name = name))
     suspend fun deleteGroup(group: GroupEntity) = groupDao.deleteGroup(group)
 
-    // ========== Market Center ==========
     suspend fun getSectors(): List<SectorItem> {
         return try { fundApi.getSectors().data?.diff ?: emptyList() } catch (e: Exception) { emptyList() }
     }
