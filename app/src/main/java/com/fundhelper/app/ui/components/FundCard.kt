@@ -33,29 +33,26 @@ fun FundCard(
     onSharesChange: (Double) -> Unit,
     onCostChange: (Double) -> Unit
 ) {
-    val changeRate = item.fundData?.gszzl ?: 0.0
-    val rateColor = if (changeRate >= 0) UpRed else DownGreen
+    val fd = item.fundData
+    val hasReplace = fd?.pDate != null && fd.gzTime != null && fd.pDate == fd.gzTime.take(10)
 
-    // 净值是否已更新（当日净值已出）
-    val hasReplace = item.fundData?.pDate != null && item.fundData?.gzTime != null
-            && item.fundData.pDate == item.fundData.gzTime.take(10)
+    // 涨跌幅：已更新用 NAVCHGRT，否则用 GSZZL
+    val effectiveRate = if (hasReplace) (fd?.navChangeRate ?: fd?.gszzl ?: 0.0) else (fd?.gszzl ?: 0.0)
+    val rateColor = if (effectiveRate >= 0) UpRed else DownGreen
 
-    // 有效涨跌幅：已更新用 NAVCHGRT，否则用 GSZZL
-    val effectiveRate = if (hasReplace) (item.fundData?.navChangeRate ?: changeRate) else changeRate
-    val effectiveRateColor = if (effectiveRate >= 0) UpRed else DownGreen
+    // 涨跌额 = 净值 * 涨跌幅 / 100（前一个交易日相对增减值）
+    val nav = fd?.nav ?: 0.0
+    val changeAmount = nav * effectiveRate / 100.0
 
-    // 估值（用于第三行显示）
-    val gsz = item.fundData?.gsz
+    // 净值：优先 FundInfo 的 DWJZ
+    val displayNav = item.fundNav ?: fd?.nav
+    val navDateStr = item.navDate ?: fd?.pDate ?: ""
 
-    // 显示用净值：优先用 FundInfo 返回的 DWJZ，其次 FundData 的 NAV
-    val displayNav = item.fundNav ?: item.fundData?.nav
+    // 估值
+    val gsz = fd?.gsz
 
-    // 净值日期
-    val navDateStr = item.navDate ?: item.fundData?.pDate ?: ""
-
-    // 近一年收益率
+    // 近一年
     val return1Y = item.return1Y
-    val return1YColor = if ((return1Y ?: 0.0) >= 0) UpRed else DownGreen
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(enabled = !isEditing) { onClick() },
@@ -64,161 +61,87 @@ fun FundCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            // ========== 第一行：名称 + 代码 | 涨跌幅 ==========
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
+            // ====== Row 1: 名称+代码 | 涨跌幅 ======
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     if (item.entity.isFavorite) {
-                        Icon(Icons.Default.Star, contentDescription = "特别关注", tint = UpRed, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Star, "关注", tint = UpRed, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                     }
-                    Text(
-                        item.entity.name,
-                        fontWeight = FontWeight.Medium, fontSize = 15.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    Text(item.entity.name, fontWeight = FontWeight.Medium, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(item.entity.code, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                 }
-                Text(
-                    effectiveRate.formatPercent(),
-                    fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                    color = effectiveRateColor
-                )
+                Text(effectiveRate.formatPercent(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = rateColor)
             }
 
-            // ========== 第二行：近1年收益率 | 净值(日期) ==========
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // ====== Row 2: 近1年 | 净值(日期) ======
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("近1年 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        return1Y?.formatPercent() ?: "--",
-                        fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                        color = return1YColor
-                    )
+                    Text(return1Y?.formatPercent() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if ((return1Y ?: 0.0) >= 0) UpRed else DownGreen)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("净值 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        if (displayNav != null && displayNav > 0) String.format("%.4f", displayNav) else "--",
-                        fontSize = 13.sp, fontWeight = FontWeight.Medium
-                    )
-                    if (navDateStr.isNotEmpty()) {
-                        Text(" ($navDateStr)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
-                    }
+                    Text(if (displayNav != null && displayNav > 0) String.format("%.4f", displayNav) else "--", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    if (navDateStr.isNotEmpty()) Text(" ($navDateStr)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
             }
 
-            // ========== 第三行：涨跌标记 + 估值 + 更新时间 ==========
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // ====== Row 3: 前日涨跌额 | (更新标记) | 估值 | 时间 ======
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                // 左侧：涨跌额
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (hasReplace) "日涨跌 " else "估涨跌 ",
-                        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        effectiveRate.formatPercent(),
-                        fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                        color = effectiveRateColor
-                    )
-                    if (hasReplace) {
-                        Text(" (已更新)", fontSize = 10.sp, color = UpRed.copy(alpha = 0.7f))
-                    }
+                    Text("涨跌 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(String.format("%+.4f", changeAmount), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = rateColor)
                 }
+                // 右侧：已更新标记 + 估值 + 时间
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (hasReplace) Text("(已更新) ", fontSize = 10.sp, color = UpRed.copy(alpha = 0.7f))
                     if (showGSZ && !isEditing && gsz != null && gsz > 0) {
                         Text("估值 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(gsz.toString(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("  ", fontSize = 11.sp)
                     }
-                    Text(
-                        item.fundData?.gzTime?.takeLast(8) ?: "--",
-                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            // ========== 编辑模式 ==========
+            // ====== 编辑模式 ======
             if (isEditing) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = if (item.entity.shares > 0) item.entity.shares.toString() else "",
-                        onValueChange = { value -> value.toDoubleOrNull()?.let { onSharesChange(it) } },
+                        onValueChange = { v -> v.toDoubleOrNull()?.let { onSharesChange(it) } },
                         label = { Text("持有份额", fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f), singleLine = true,
-                        textStyle = MaterialTheme.typography.bodySmall
+                        modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall
                     )
                     OutlinedTextField(
                         value = if (item.entity.costPrice > 0) item.entity.costPrice.toString() else "",
-                        onValueChange = { value -> value.toDoubleOrNull()?.let { onCostChange(it) } },
+                        onValueChange = { v -> v.toDoubleOrNull()?.let { onCostChange(it) } },
                         label = { Text("成本价", fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f), singleLine = true,
-                        textStyle = MaterialTheme.typography.bodySmall
+                        modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall
                     )
                     IconButton(onClick = onToggleFavorite) {
-                        Icon(
-                            if (item.entity.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = "特别关注",
-                            tint = if (item.entity.isFavorite) UpRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Icon(if (item.entity.isFavorite) Icons.Default.Star else Icons.Default.StarBorder, "关注", tint = if (item.entity.isFavorite) UpRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                     }
                 }
             }
 
-            // ========== 持有额/收益行（非编辑模式） ==========
+            // ====== 持有额/收益行 ======
             if (!isEditing) {
-                val hasExtraInfo = showAmount || showGains || showCost || showCostRate
-                if (hasExtraInfo) {
+                val hasExtra = showAmount || showGains || showCost || showCostRate
+                if (hasExtra) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (showAmount) {
-                            Column {
-                                Text("持有额", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.holdingAmount.formatAmount(), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                            }
-                        }
-                        if (showGains) {
-                            Column {
-                                Text("估算收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.estimatedGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.estimatedGain >= 0) UpRed else DownGreen)
-                            }
-                        }
-                        if (showCost) {
-                            Column {
-                                Text("持有收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.costGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGain >= 0) UpRed else DownGreen)
-                            }
-                        }
-                        if (showCostRate && item.entity.costPrice > 0) {
-                            Column {
-                                Text("持有收益率", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.costGainRate.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGainRate >= 0) UpRed else DownGreen)
-                            }
-                        }
+                        if (showAmount) Column { Text("持有额", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.holdingAmount.formatAmount(), fontSize = 12.sp, fontWeight = FontWeight.Medium) }
+                        if (showGains) Column { Text("估算收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.estimatedGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.estimatedGain >= 0) UpRed else DownGreen) }
+                        if (showCost) Column { Text("持有收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.costGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGain >= 0) UpRed else DownGreen) }
+                        if (showCostRate && item.entity.costPrice > 0) Column { Text("持有收益率", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.costGainRate.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGainRate >= 0) UpRed else DownGreen) }
                     }
                 }
             }
