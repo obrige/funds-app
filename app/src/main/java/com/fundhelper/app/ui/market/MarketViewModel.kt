@@ -17,14 +17,16 @@ class MarketViewModel @Inject constructor(
     private val _sectors = MutableStateFlow<List<SectorItem>>(emptyList())
     val sectors: StateFlow<List<SectorItem>> = _sectors.asStateFlow()
 
-    private val _marketFlow = MutableStateFlow<List<FundFlowItem>>(emptyList())
-    val marketFlow: StateFlow<List<FundFlowItem>> = _marketFlow.asStateFlow()
+    // 大盘资金: 存储 CSV klines 原始字符串，由 Screen 解析
+    private val _marketFlow = MutableStateFlow<List<String>>(emptyList())
+    val marketFlow: StateFlow<List<String>> = _marketFlow.asStateFlow()
 
-    private val _northFlow = MutableStateFlow<List<FlowItem>>(emptyList())
-    val northFlow: StateFlow<List<FlowItem>> = _northFlow.asStateFlow()
+    // 北向/南向: 存储 CSV 原始字符串
+    private val _northFlow = MutableStateFlow<List<String>>(emptyList())
+    val northFlow: StateFlow<List<String>> = _northFlow.asStateFlow()
 
-    private val _southFlow = MutableStateFlow<List<FlowItem>>(emptyList())
-    val southFlow: StateFlow<List<FlowItem>> = _southFlow.asStateFlow()
+    private val _southFlow = MutableStateFlow<List<String>>(emptyList())
+    val southFlow: StateFlow<List<String>> = _southFlow.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -44,7 +46,7 @@ class MarketViewModel @Inject constructor(
     }
 
     private suspend fun loadMarketFlow() {
-        _marketFlow.value = repository.getMarketFundFlow()?.data?.diff ?: emptyList()
+        _marketFlow.value = repository.getMarketFundFlow()?.data?.klines ?: emptyList()
     }
 
     private suspend fun loadNorthSouthFlow() {
