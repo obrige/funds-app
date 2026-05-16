@@ -21,6 +21,14 @@ class FundDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(FundDetailUiState())
     val uiState: StateFlow<FundDetailUiState> = _uiState.asStateFlow()
 
+    // 当前图表时间范围 (1m, 3m, 6m, y, 3y)
+    private val _chartRange = MutableStateFlow("y")
+    val chartRange: StateFlow<String> = _chartRange.asStateFlow()
+
+    // 当前图表类型 (0=净值走势, 1=累计收益)
+    private val _chartType = MutableStateFlow(0)
+    val chartType: StateFlow<Int> = _chartType.asStateFlow()
+
     init {
         loadAll()
     }
@@ -35,7 +43,7 @@ class FundDetailViewModel @Inject constructor(
             launch { loadFundData() }
             launch { loadFundInfo() }
             launch { loadTrend() }
-            launch { loadHistoryNav() }
+            launch { loadChart(_chartRange.value) }
             launch { loadPosition() }
             launch { loadManager() }
 
@@ -59,10 +67,30 @@ class FundDetailViewModel @Inject constructor(
         _uiState.update { it.copy(trendData = trend) }
     }
 
-    private suspend fun loadHistoryNav() {
-        val response = repository.getFundHistoryNav(fundCode)
-        val list = response?.Datas?.LSJZList ?: emptyList()
-        _uiState.update { it.copy(historyNav = list) }
+    // 加载图表数据（净值走势 + 累计收益）
+    fun loadChart(range: String) {
+        _chartRange.value = range
+        viewModelScope.launch {
+            launch { loadNetDiagram(range) }
+            launch { loadYieldDiagram(range) }
+        }
+    }
+
+    private suspend fun loadNetDiagram(range: String) {
+        val response = repository.getFundNetDiagram(fundCode, range)
+        val items = response?.Datas ?: emptyList()
+        _uiState.update { it.copy(netDiagramData = items) }
+    }
+
+    private suspend fun loadYieldDiagram(range: String) {
+        val response = repository.getFundYieldDiagram(fundCode, range)
+        val items = response?.Datas ?: emptyList()
+        val indexName = response?.Expansion?.indexName ?: "沪深300"
+        _uiState.update { it.copy(yieldDiagramData = items, yieldIndexName = indexName) }
+    }
+
+    fun setChartType(type: Int) {
+        _chartType.value = type
     }
 
     private suspend fun loadPosition() {
