@@ -24,6 +24,7 @@ fun HomeScreen(
     onFundClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onMarketClick: () -> Unit,
+    onIndexClick: ((IndexDisplayItem) -> Unit)? = null,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -109,7 +110,8 @@ fun HomeScreen(
                     onRemoveIndex = { viewModel.removeIndex(it) },
                     onAddIndex = { secId, name, code, market ->
                         viewModel.addIndex(secId, name, code, market)
-                    }
+                    },
+                    onIndexClick = onIndexClick
                 )
             }
 
