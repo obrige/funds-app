@@ -96,7 +96,7 @@ fun FundDetailScreen(
                 0 -> FundTrendTab(uiState)
                 1 -> FundPositionTab(uiState)
                 2 -> FundHistoryNavTab(uiState)
-                3 -> FundInfoTab(uiState, viewModel)
+                3 -> FundInfoTab(uiState)
             }
         }
     }
@@ -160,7 +160,7 @@ fun FundPositionTab(uiState: FundDetailUiState) {
                 Text("涨跌幅", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                 Text("占比", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            Divider(modifier = Modifier.padding(vertical = 4.dp))
         }
         items(uiState.positions) { stock ->
             val quote = uiState.stocks.find { it.code == stock.stockCode }
@@ -196,7 +196,7 @@ fun FundHistoryNavTab(uiState: FundDetailUiState) {
                 Text("累计净值", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                 Text("涨跌幅", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            Divider(modifier = Modifier.padding(vertical = 4.dp))
         }
         items(uiState.historyNav) { item ->
             val rate = item.changeRate.replace("%", "").toDoubleOrNull() ?: 0.0
@@ -212,7 +212,7 @@ fun FundHistoryNavTab(uiState: FundDetailUiState) {
 }
 
 @Composable
-fun FundInfoTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
+fun FundInfoTab(uiState: FundDetailUiState) {
     val info = uiState.fundInfo
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (info != null) {
@@ -220,19 +220,24 @@ fun FundInfoTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
                 Text("历史业绩排名", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    listOf("近1月" to (info.return1M to info.rank1M), "近3月" to (info.return3M to info.rank3M), "近6月" to (info.return6M to info.rank6M), "近1年" to (info.return1Y to info.rank1Y)).forEach { (label, pair) ->
+                    listOf(
+                        "近1月" to (info.return1M to info.rank1M),
+                        "近3月" to (info.return3M to info.rank3M),
+                        "近6月" to (info.return6M to info.rank6M),
+                        "近1年" to (info.return1Y to info.rank1Y)
+                    ).forEach { (label, pair) ->
                         val (value, rank) = pair
                         val color = if ((value ?: 0.0) >= 0) UpRed else DownGreen
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${value ?: "--"}%", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
+                            Text("${value ?: 0.0}%", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
                             Text("排名: ${rank ?: "--"}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
             item {
-                HorizontalDivider()
+                Divider()
                 Text("基本信息", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 InfoRow("基金代码", info.code ?: "--")
@@ -240,12 +245,12 @@ fun FundInfoTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
                 InfoRow("基金公司", info.company ?: "--")
                 InfoRow("单位净值", "${info.nav ?: "--"} (${info.navDate ?: "--"})")
                 InfoRow("累计净值", info.totalNav?.toString() ?: "--")
-                InfoRow("交易状态", "${info.buyStatus ?: "--"} ${info.sellStatus ?: "--"}")
+                InfoRow("交易状态", "${info.buyStatus ?: "--"} / ${info.sellStatus ?: "--"}")
                 info.scale?.let { InfoRow("基金规模", it.formatAmount()) }
-                info.bonus?.let { bonus -> InfoRow("分红信息", "${bonus.date}日 每份折算${bonus.ratio}份") }
+                info.bonus?.let { bonus -> InfoRow("分红信息", "${bonus.date ?: "--"} 每份折算${bonus.ratio ?: 0.0}份") }
             }
             item {
-                HorizontalDivider()
+                Divider()
                 Text("基金经理", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -254,13 +259,14 @@ fun FundInfoTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(manager.name ?: "--", fontWeight = FontWeight.Medium)
-                            Text(if (manager.endDate.isNullOrEmpty()) "现任" else "已离任", fontSize = 11.sp, color = if (manager.endDate.isNullOrEmpty()) UpRed else MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                if (manager.endDate.isNullOrEmpty()) "现任" else "已离任",
+                                fontSize = 11.sp,
+                                color = if (manager.endDate.isNullOrEmpty()) UpRed else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${manager.startDate} ~ ${manager.endDate ?: "至今"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("任职${manager.days.toInt()}天", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Text("任职涨幅: ${String.format("%.2f", manager.growth)}%", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (manager.growth >= 0) UpRed else DownGreen)
+                        Text("${manager.startDate ?: "--"} ~ ${manager.endDate ?: "至今"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("任职${manager.days.toInt()}天  涨幅: ${String.format("%.2f", manager.growth)}%", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (manager.growth >= 0) UpRed else DownGreen)
                         manager.resume?.takeIf { it.isNotBlank() }?.let {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3)
@@ -270,7 +276,11 @@ fun FundInfoTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
             }
         }
         if (info == null && uiState.managerHistory.isEmpty()) {
-            item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text("加载中...", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("加载中...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
@@ -283,10 +293,17 @@ fun InfoRow(label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PositionDialog(currentShares: Double, onDismiss: () -> Unit, onAdd: (Double) -> Unit, onReduce: (Double) -> Unit) {
+fun PositionDialog(
+    currentShares: Double,
+    onDismiss: () -> Unit,
+    onAdd: (Double) -> Unit,
+    onReduce: (Double) -> Unit
+) {
     var inputShares by remember { mutableStateOf("") }
     var isAdd by remember { mutableStateOf(true) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isAdd) "加仓" else "减仓") },
