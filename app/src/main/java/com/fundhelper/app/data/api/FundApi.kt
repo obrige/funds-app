@@ -7,6 +7,7 @@ import retrofit2.http.Url
 
 interface FundApi {
 
+    // 获取基金实时估值数据 (与原项目一致)
     @GET("FundMNewApi/FundMNFInfo")
     suspend fun getFundRealtimeData(
         @Query("Fcodes") codes: String,
@@ -16,17 +17,19 @@ interface FundApi {
         @Query("appType") appType: String = "ttjj",
         @Query("product") product: String = "EFund",
         @Query("Version") version: String = "1",
-        @Query("deviceid") deviceId: String = "android_fund_helper",
-        @Query("_") timestamp: Long = System.currentTimeMillis()
+        @Query("deviceid") deviceId: String = "android_fund_helper"
     ): FundListResponse
 
-    @GET("FundSearch/api/FundSearchAPI.ashx")
+    // 搜索基金 (原项目用 m=9, 域名是 fundsuggest.eastmoney.com)
+    @GET
     suspend fun searchFund(
-        @Query("m") m: Int = 1,
+        @Url url: String = "https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx",
+        @Query("m") m: Int = 9,
         @Query("key") keyword: String,
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundSearchResponse
 
+    // 获取基金估值走势图 (与原项目 charts.vue 一致)
     @GET("FundMNewApi/FundMNIVariablePrice")
     suspend fun getFundTrend(
         @Query("FCODE") code: String,
@@ -38,6 +41,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundTrendResponse
 
+    // 获取基金历史净值 (与原项目 charts2.vue 一致)
     @GET("FundMNewApi/FundMNHisNetList")
     suspend fun getFundHistoryNav(
         @Query("FCODE") code: String,
@@ -50,6 +54,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundHistoryNavResponse
 
+    // 获取基金持仓明细 (与原项目 positionDetail.vue 一致)
     @GET("FundMNewApi/FundMNInverstPosition")
     suspend fun getFundPosition(
         @Query("FCODE") code: String,
@@ -60,6 +65,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundPositionResponse
 
+    // 获取基金概况 (与原项目 fundInfo.vue 一致)
     @GET("FundMApi/FundBaseTypeInformation.ashx")
     suspend fun getFundInfo(
         @Query("FCODE") code: String,
@@ -70,6 +76,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundInfoResponse
 
+    // 获取基金经理 (与原项目 managerDetail.vue 一致)
     @GET("FundMNewApi/FundMNInfoNew")
     suspend fun getFundManager(
         @Query("FCODE") code: String,
@@ -80,6 +87,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundManagerResponse
 
+    // 获取指数实时行情 (与原项目 getIndFundData 一致)
     @GET
     suspend fun getIndexQuote(
         @Url url: String = "https://push2.eastmoney.com/api/qt/ulist.np/get",
@@ -89,6 +97,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): IndexQuoteResponse
 
+    // 获取行业板块
     @GET("https://push2.eastmoney.com/api/qt/clist/get")
     suspend fun getSectors(
         @Query("pn") pn: Int = 1,
@@ -103,6 +112,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): SectorResponse
 
+    // 大盘资金流向
     @GET("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get")
     suspend fun getMarketFundFlow(
         @Query("secid") secId: String = "1.000001",
@@ -113,6 +123,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundFlowResponse
 
+    // 北向资金（沪港通+深港通）
     @GET("https://push2.eastmoney.com/api/qt/kamt.rtmin/get")
     suspend fun getNorthSouthFlow(
         @Query("fields1") fields1: String = "f1,f2,f3,f4",
