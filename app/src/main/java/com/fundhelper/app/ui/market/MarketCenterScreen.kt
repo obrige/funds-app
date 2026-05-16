@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -89,7 +90,6 @@ fun MarketFundFlowTab(flows: List<FundFlowItem>, isLoading: Boolean) {
         return
     }
 
-    // 参考 marketLine.vue: 主力净流入 / 超大单 / 大单 / 中单 / 小单
     val mainData = flows.map { (it.mainInflow ?: 0.0) / 1_0000_0000 }
     val superData = flows.map { (it.superInflow ?: 0.0) / 1_0000_0000 }
     val bigData = flows.map { (it.bigInflow ?: 0.0) / 1_0000_0000 }
@@ -97,7 +97,6 @@ fun MarketFundFlowTab(flows: List<FundFlowItem>, isLoading: Boolean) {
     val smallData = flows.map { (it.smallInflow ?: 0.0) / 1_0000_0000 }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        // 最新汇总
         val lastFlow = flows.lastOrNull()
         if (lastFlow != null) {
             Card(
@@ -117,7 +116,6 @@ fun MarketFundFlowTab(flows: List<FundFlowItem>, isLoading: Boolean) {
             }
         }
 
-        // 分时折线图
         Text("分时资金流向（亿元）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         MultiLineChart(
             lines = listOf(
@@ -130,7 +128,6 @@ fun MarketFundFlowTab(flows: List<FundFlowItem>, isLoading: Boolean) {
             modifier = Modifier.fillMaxWidth().padding(12.dp).height(240.dp)
         )
 
-        // 数据列表
         Text("明细（最近20条）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         flows.takeLast(20).reversed().forEach { flow ->
             val main = (flow.mainInflow ?: 0.0) / 1_0000_0000
@@ -171,7 +168,6 @@ fun SectorTab(sectors: List<SectorItem>, isLoading: Boolean) {
         return
     }
 
-    // 取前30条做柱状图
     val topSectors = sectors.take(30)
     val barData = topSectors.map { (it.mainNetInflow ?: 0.0) / 1_0000_0000 }
     val barLabels = topSectors.map { it.name ?: "" }
@@ -181,13 +177,12 @@ fun SectorTab(sectors: List<SectorItem>, isLoading: Boolean) {
         HorizontalBarChart(
             data = barData,
             labels = barLabels,
-            modifier = Modifier.fillMaxWidth().padding(12.dp).height((topSectors.size * 24).dp)
+            modifier = Modifier.fillMaxWidth().padding(12.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 列表
         Text("全部板块（${sectors.size}）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("板块名称", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(2f))
@@ -222,20 +217,17 @@ fun FlowTab(flows: List<FlowItem>, isLoading: Boolean, title: String, name1: Str
         return
     }
 
-    // 获取最后有效数据（非交易日在参考项目中也显示最近交易日数据）
     val lastValid = flows.lastOrNull { it.totalFlow != null && it.totalFlow != 0.0 } ?: flows.lastOrNull()
     val totalFlow = (lastValid?.totalFlow ?: 0.0) / 10000
     val shFlow = (lastValid?.shFlow ?: 0.0) / 10000
     val szFlow = (lastValid?.szFlow ?: 0.0) / 10000
 
-    // 折线图数据（取最近120个点）
     val chartData = flows.takeLast(120)
     val totalLine = chartData.map { (it.totalFlow ?: 0.0) / 10000 }
     val shLine = chartData.map { (it.shFlow ?: 0.0) / 10000 }
     val szLine = chartData.map { (it.szFlow ?: 0.0) / 10000 }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        // 汇总卡片
         Card(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             shape = RoundedCornerShape(12.dp),
@@ -250,7 +242,6 @@ fun FlowTab(flows: List<FlowItem>, isLoading: Boolean, title: String, name1: Str
             }
         }
 
-        // 折线图
         Text("$title 分时走势（亿元）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         MultiLineChart(
             lines = listOf(
@@ -261,7 +252,6 @@ fun FlowTab(flows: List<FlowItem>, isLoading: Boolean, title: String, name1: Str
             modifier = Modifier.fillMaxWidth().padding(12.dp).height(200.dp)
         )
 
-        // 明细列表
         Text("明细（最近20条）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         flows.takeLast(20).reversed().forEach { flow ->
             val total = (flow.totalFlow ?: 0.0) / 10000
@@ -282,7 +272,6 @@ fun FlowTab(flows: List<FlowItem>, isLoading: Boolean, title: String, name1: Str
 
 // ==================== 通用图表组件 ====================
 
-// 多线折线图
 @Composable
 fun MultiLineChart(
     lines: List<Pair<Pair<String, List<Double>>, Color>>,
@@ -297,11 +286,9 @@ fun MultiLineChart(
     val minVal = allValues.min()
     val maxVal = allValues.max()
     val range = (maxVal - minVal).coerceAtLeast(0.01)
-    val maxPoints = lines.maxOf { it.first.second.size }
 
     Card(modifier = modifier, shape = RoundedCornerShape(12.dp)) {
         Column(modifier = Modifier.padding(8.dp)) {
-            // 图例
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -322,7 +309,6 @@ fun MultiLineChart(
                 val drawW = w - pad * 2
                 val drawH = h - pad * 2
 
-                // 零线
                 if (minVal < 0 && maxVal > 0) {
                     val zeroY = pad + drawH * (1 - ((0f - minVal) / range)).toFloat()
                     drawLine(Color.Gray.copy(alpha = 0.3f), Offset(pad, zeroY), Offset(pad + drawW, zeroY), strokeWidth = 1f)
@@ -345,7 +331,6 @@ fun MultiLineChart(
     }
 }
 
-// 横向柱状图
 @Composable
 fun HorizontalBarChart(
     data: List<Double>,
@@ -353,29 +338,35 @@ fun HorizontalBarChart(
     modifier: Modifier = Modifier
 ) {
     if (data.isEmpty()) return
-    val maxAbs = maxOf(data.max(), kotlin.math.abs(data.min())).coerceAtLeast(0.01)
+    val maxAbs = maxOf(data.maxOrNull() ?: 0.0, kotlin.math.abs(data.minOrNull() ?: 0.0)).coerceAtLeast(0.01)
 
     Card(modifier = modifier, shape = RoundedCornerShape(12.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
             data.forEachIndexed { index, value ->
                 val barColor = if (value >= 0) UpRed else DownGreen
                 val label = if (index < labels.size) labels[index] else ""
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                val fraction = (kotlin.math.abs(value) / maxAbs).toFloat().coerceAtMost(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(label, fontSize = 10.sp, modifier = Modifier.width(64.dp), maxLines = 1)
                     Box(modifier = Modifier.weight(1f).height(16.dp)) {
-                        // 零线
-                        val zeroFraction = if (maxAbs > 0) (0.5f + (0f - data.min()).toFloat() / (2 * maxAbs)) else 0.5f
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .fillMaxWidth(kotlin.math.abs(value.toFloat() / maxAbs.toFloat()).coerceAtMost(1f))
-                                .align(if (value >= 0) Alignment.CenterStart else Alignment.CenterEnd)
-                                .offset(x = (if (value >= 0) zeroFraction * 100 else (1 - zeroFraction) * 100).dp)
+                                .fillMaxWidth(fraction)
                                 .clip(RoundedCornerShape(3.dp))
                                 .background(barColor.copy(alpha = 0.7f))
                         )
                     }
-                    Text(String.format("%.2f", value), fontSize = 10.sp, modifier = Modifier.width(56.dp), textAlign = TextAlign.End, color = barColor)
+                    Text(
+                        String.format("%.2f", value),
+                        fontSize = 10.sp,
+                        modifier = Modifier.width(56.dp),
+                        textAlign = TextAlign.End,
+                        color = barColor
+                    )
                 }
             }
         }
