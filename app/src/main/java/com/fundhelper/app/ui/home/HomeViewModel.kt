@@ -73,6 +73,21 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 与原项目 App.vue getData 方法一致的数据处理逻辑
+     *
+     * 关键逻辑:
+     * - hasReplace = PDATE != null && GZTIME != null && PDATE == GZTIME.take(10)
+     *   (净值日期 == 估值日期, 说明当日净值已更新)
+     * - amount = NAV * shares (持有额始终用最新净值)
+     * - 当 hasReplace 时:
+     *   - effectiveNav = NAV
+     *   - gains = (NAV - NAV / (1 + NAVCHGRT * 0.01)) * shares
+     *   - effectiveRate = NAVCHGRT
+     * - 当 !hasReplace 时:
+     *   - gains = (GSZ - NAV) * shares
+     *   - effectiveRate = GSZZL
+     */
     private suspend fun refreshFundData() {
         if (currentFunds.isEmpty()) {
             _uiState.update { it.copy(funds = emptyList(), totalGain = 0.0, totalGainRate = 0.0, totalAmount = 0.0) }
@@ -88,43 +103,54 @@ class HomeViewModel @Inject constructor(
         val displayItems = currentFunds.map { entity ->
             val data = apiData.find { it.code == entity.code }
             val shares = entity.shares
-            val nav = data?.nav ?: 0.0
-            val gsz = data?.gsz ?: nav
-            val gszzl = data?.gszzl ?: 0.0
+            val nav = data?.nav ?: 0.0      // NAV - 最新单位净值
+            val gsz = data?.gsz ?: nav       // GSZ - 估算净值
+            val gszzl = data?.gszzl ?: 0.0   // GSZZL - 估算涨跌幅(%)
+            val navChangeRate = data?.navChangeRate ?: 0.0  // NAVCHGRT - 净值涨跌幅(%)
 
+            // 判断净值是否已更新 (与原项目一致: PDATE == GZTIME.substr(0,10))
             val hasReplace = data?.pDate != null && data.gzTime != null
                     && data.pDate == data.gzTime.take(10)
 
+            // 有效净值: 净值已更新用NAV, 否则用估算值GSZ
             val effectiveNav = if (hasReplace) nav else gsz
-            val effectiveRate = if (hasReplace) (data?.navChangeRate ?: gszzl) else gszzl
+            // 有效涨跌幅: 净值已更新用NAVCHGRT, 否则用GSZZL
+            val effectiveRate = if (hasReplace) navChangeRate else gszzl
 
-            val holdingAmount = nav * shares
-            val estimatedGain = if (shares > 0 && data != null) {
+            // 持有额 = 最新净值 * 份额 (始终用NAV, 与原项目一致)
+            val amount = nav * shares
+
+            // 日估算收益 (与原项目 gains 计算一致)
+            val gains = if (shares > 0 && data != null) {
                 if (hasReplace) {
-                    (nav - nav / (1 + (data.navChangeRate ?: 0.0) * 0.01)) * shares
+                    // 净值已更新: (NAV - NAV / (1 + NAVCHGRT/100)) * shares
+                    (nav - nav / (1 + navChangeRate * 0.01)) * shares
                 } else {
+                    // 净值未更新: (GSZ - NAV) * shares
                     (gsz - nav) * shares
                 }
             } else 0.0
 
-            val costGain = if (entity.costPrice > 0 && shares > 0) {
+            // 持有收益 (与原项目 costGains 计算一致)
+            val costGains = if (entity.costPrice > 0 && shares > 0) {
                 (effectiveNav - entity.costPrice) * shares
             } else 0.0
 
-            val costGainRate = if (entity.costPrice > 0) {
+            // 持有收益率 (与原项目 costGainsRate 计算一致)
+            val costGainsRate = if (entity.costPrice > 0) {
                 (effectiveNav - entity.costPrice) / entity.costPrice * 100
             } else 0.0
 
-            totalAmount += holdingAmount
-            totalGain += estimatedGain
+            totalAmount += amount
+            totalGain += gains
 
             FundDisplayItem(
                 entity = entity,
                 fundData = data,
-                estimatedGain = estimatedGain,
-                holdingAmount = holdingAmount,
-                costGain = costGain,
-                costGainRate = costGainRate
+                estimatedGain = gains,
+                holdingAmount = amount,
+                costGain = costGains,
+                costGainRate = costGainsRate
             )
         }
 
@@ -228,5 +254,9 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             repository.addIndex(IndexEntity(secId = secId, name = name, code = code, market = market))
         }
+    }
+
+    fun refreshFundDataPublic() {
+        viewModelScope.launch { refreshFundData() }
     }
 }
