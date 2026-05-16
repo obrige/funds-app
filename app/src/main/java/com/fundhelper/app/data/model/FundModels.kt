@@ -267,6 +267,47 @@ data class FlowItem(
     @Json(name = "f4") val szFlow: Double?
 )
 
+// ========== Chart Data Models (原项目 charts2.vue) ==========
+
+@JsonClass(generateAdapter = true)
+data class FundNetDiagramResponse(
+    val Datas: List<FundNetDiagramItem>?,
+    val Expansion: NetDiagramExpansion?
+)
+
+@JsonClass(generateAdapter = true)
+data class FundNetDiagramItem(
+    @Json(name = "DWJZ") val nav: Double?,
+    @Json(name = "LJJZ") val totalNav: Double?,
+    @Json(name = "FSRQ") val date: String?,
+    @Json(name = "JZZZL") val changeRate: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class NetDiagramExpansion(
+    @Json(name = "FCODE") val code: String?,
+    @Json(name = "SHORTNAME") val name: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class FundYieldDiagramResponse(
+    val Datas: List<FundYieldItem>?,
+    val Expansion: YieldExpansion?
+)
+
+@JsonClass(generateAdapter = true)
+data class FundYieldItem(
+    @Json(name = "YIELD") val yield: Double?,
+    @Json(name = "INDEXYIED") val indexYield: Double?,
+    @Json(name = "PDATE") val date: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class YieldExpansion(
+    @Json(name = "INDEXNAME") val indexName: String?,
+    @Json(name = "FCODE") val code: String?
+)
+
 // ========== UI State Models ==========
 
 data class FundDisplayItem(
@@ -319,54 +360,9 @@ data class FundDetailUiState(
     val managerHistory: List<ManagerHistory> = emptyList(),
     val trendData: List<List<String>> = emptyList(),
     val historyNav: List<HistoryNavItem> = emptyList(),
+    // 图表数据 (净值走势 + 累计收益)
+    val netDiagramData: List<FundNetDiagramItem> = emptyList(),
+    val yieldDiagramData: List<FundYieldItem> = emptyList(),
+    val yieldIndexName: String = "沪深300",
     val isLoading: Boolean = false
 )
-
-
-// ============ 图表数据模型 (与原项目 charts2.vue 一致) ============
-
-// 历史净值图数据 (FundNetDiagram.ashx)
-@JsonClass(generateAdapter = true)
-data class FundNetDiagramResponse(
-    val Datas: List<FundNetDiagramItem>?,
-    val Expansion: NetDiagramExpansion?
-)
-
-@JsonClass(generateAdapter = true)
-data class FundNetDiagramItem(
-    @Json(name = "DWJZ") val nav: Double?,      // 单位净值
-    @Json(name = "LJJZ") val totalNav: Double?,  // 累计净值
-    @Json(name = "FSRQ") val date: String?,       // 日期
-    @Json(name = "JZZZL") val changeRate: String? // 日增长率
-)
-
-@JsonClass(generateAdapter = true)
-data class NetDiagramExpansion(
-    @Json(name = "FCODE") val code: String?,
-    @Json(name = "SHORTNAME") val name: String?
-)
-
-// 累计收益图数据 (FundYieldDiagramNew.ashx)
-@JsonClass(generateAdapter = true)
-data class FundYieldDiagramResponse(
-    val Datas: List<FundYieldItem>?,
-    val Expansion: YieldExpansion?
-)
-
-@JsonClass(generateAdapter = true)
-data class FundYieldItem(
-    @Json(name = "YIELD") val yield: Double?,        // 基金涨幅
-    @Json(name = "INDEXYIED") val indexYield: Double?, // 对比指数涨幅
-    @Json(name = "PDATE") val date: String?           // 日期
-)
-
-@JsonClass(generateAdapter = true)
-data class YieldExpansion(
-    @Json(name = "INDEXNAME") val indexName: String?,
-    @Json(name = "FCODE") val code: String?
-)
-
-// 估值走势图数据 (FundVarietieValuationDetail.ashx)
-// 原项目返回格式: Datas 是逗号分隔的字符串数组
-// 但 Moshi 无法直接解析，需要用 ResponseBody 接收
-// 所以 FundTrendResponse 保持不变，但 FundTrendData 需要调整
