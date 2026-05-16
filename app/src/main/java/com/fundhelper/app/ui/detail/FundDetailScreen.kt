@@ -250,7 +250,6 @@ fun FundNetDiagramTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel
             return
         }
 
-        // 日期搜索
         DateSearchBar(searchDate = searchDate, onSearchChange = { searchDate = it }, dataSize = data.size)
 
         when (viewMode) {
@@ -353,7 +352,6 @@ fun FundYieldDiagramTab(uiState: FundDetailUiState, viewModel: FundDetailViewMod
     }
 }
 
-// 日期搜索栏
 @Composable
 fun DateSearchBar(searchDate: String, onSearchChange: (String) -> Unit, dataSize: Int) {
     Row(
@@ -373,11 +371,10 @@ fun DateSearchBar(searchDate: String, onSearchChange: (String) -> Unit, dataSize
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text("共$dataSize条", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("共${dataSize}条", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
-// Canvas 真·折线图
 @Composable
 fun CanvasLineChart(data: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) return
@@ -402,7 +399,6 @@ fun CanvasLineChart(data: List<Double>, labels: List<String>, modifier: Modifier
                 val drawH = h - pad * 2
                 val stepX = drawW / (data.size - 1)
 
-                // 填充区域
                 val fillPath = Path()
                 data.forEachIndexed { i, v ->
                     val x = pad + i * stepX
@@ -414,7 +410,6 @@ fun CanvasLineChart(data: List<Double>, labels: List<String>, modifier: Modifier
                 fillPath.close()
                 drawPath(fillPath, color = lineColor.copy(alpha = 0.08f))
 
-                // 折线
                 val linePath = Path()
                 data.forEachIndexed { i, v ->
                     val x = pad + i * stepX
@@ -423,14 +418,12 @@ fun CanvasLineChart(data: List<Double>, labels: List<String>, modifier: Modifier
                 }
                 drawPath(linePath, color = lineColor, style = Stroke(width = 2.5f))
 
-                // 末端圆点
                 if (data.isNotEmpty()) {
                     val lastX = pad + (data.size - 1) * stepX
                     val lastY = pad + drawH * (1 - ((data.last() - minVal) / range)).toFloat()
                     drawCircle(lineColor, radius = 5f, center = Offset(lastX, lastY))
                 }
             }
-            // X轴标签（取样）
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 val sampleCount = minOf(6, labels.size)
@@ -444,7 +437,6 @@ fun CanvasLineChart(data: List<Double>, labels: List<String>, modifier: Modifier
     }
 }
 
-// 简易条形图
 @Composable
 fun SimpleLineChart(data: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) return
