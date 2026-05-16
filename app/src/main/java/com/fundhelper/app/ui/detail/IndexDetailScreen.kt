@@ -56,7 +56,6 @@ fun IndexDetailScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 指数代码
             Text(
                 "${item.entity.code}.${item.entity.market}",
                 fontSize = 14.sp,
@@ -65,7 +64,6 @@ fun IndexDetailScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 当前价格
             Text(
                 price.toString(),
                 fontSize = 36.sp,
@@ -75,7 +73,6 @@ fun IndexDetailScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 涨跌额 + 涨跌幅
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     change.formatPercent(),
@@ -94,12 +91,10 @@ fun IndexDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 成交量
             if (amount > 0) {
-                InfoRow("成交量", "%.2f亿".format(amount / 1_0000_0000))
+                IndexDetailInfoRow("成交量", "%.2f亿".format(amount / 1_0000_0000))
             }
 
-            // 价格走势简图
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "价格走势",
@@ -109,7 +104,6 @@ fun IndexDetailScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 占位走势图（后续可接入真实历史K线数据）
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -121,7 +115,6 @@ fun IndexDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 指数信息
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -129,11 +122,11 @@ fun IndexDetailScreen(
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text("指数信息", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    InfoRow("指数名称", item.entity.name)
-                    InfoRow("指数代码", "${item.entity.code}.${item.entity.market}")
-                    InfoRow("最新价", price.toString())
-                    InfoRow("涨跌额", change.toString())
-                    InfoRow("涨跌幅", changeRate.formatPercent())
+                    IndexDetailInfoRow("指数名称", item.entity.name)
+                    IndexDetailInfoRow("指数代码", "${item.entity.code}.${item.entity.market}")
+                    IndexDetailInfoRow("最新价", price.toString())
+                    IndexDetailInfoRow("涨跌额", change.toString())
+                    IndexDetailInfoRow("涨跌幅", changeRate.formatPercent())
                 }
             }
         }
@@ -141,7 +134,7 @@ fun IndexDetailScreen(
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun IndexDetailInfoRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -155,7 +148,6 @@ private fun InfoRow(label: String, value: String) {
 
 @Composable
 private fun PricePlaceholderChart(rateColor: Color) {
-    // 模拟走势折线
     val points = remember {
         listOf(0.7f, 0.65f, 0.72f, 0.68f, 0.75f, 0.8f, 0.78f, 0.82f, 0.85f, 0.8f,
             0.83f, 0.88f, 0.86f, 0.9f, 0.87f, 0.92f, 0.89f, 0.94f, 0.91f, 0.95f)
@@ -172,7 +164,6 @@ private fun PricePlaceholderChart(rateColor: Color) {
         val minVal = points.min()
         val range = (maxVal - minVal).coerceAtLeast(0.01f)
 
-        // 填充区域路径
         val fillPath = Path()
         points.forEachIndexed { i, v ->
             val x = i * stepX
@@ -182,10 +173,8 @@ private fun PricePlaceholderChart(rateColor: Color) {
         fillPath.lineTo((points.size - 1) * stepX, height)
         fillPath.close()
 
-        // 半透明填充
         drawPath(fillPath, color = rateColor.copy(alpha = 0.1f))
 
-        // 折线
         val linePath = Path()
         points.forEachIndexed { i, v ->
             val x = i * stepX
