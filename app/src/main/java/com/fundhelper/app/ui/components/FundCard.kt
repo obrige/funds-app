@@ -34,7 +34,24 @@ fun FundCard(
     onCostChange: (Double) -> Unit
 ) {
     val changeRate = item.fundData?.gszzl ?: 0.0
-    val rateColor = if (changeRate >= 0) UpRed else DownGreen
+
+    // 净值是否已更新（当日净值已出）
+    val hasReplace = item.fundData?.pDate != null && item.fundData?.gzTime != null
+            && item.fundData.pDate == item.fundData.gzTime.take(10)
+
+    // 有效涨跌幅：净值已更新用 NAVCHGRT，否则用 GSZZL
+    val effectiveRate = if (hasReplace) (item.fundData?.navChangeRate ?: 0.0) else changeRate
+    val effectiveRateColor = if (effectiveRate >= 0) UpRed else DownGreen
+
+    // 有效净值
+    val effectiveNav = if (hasReplace) (item.fundData?.nav ?: 0.0) else (item.fundData?.gsz ?: 0.0)
+
+    // 近一年收益率
+    val return1Y = item.return1Y
+    val return1YColor = if ((return1Y ?: 0.0) >= 0) UpRed else DownGreen
+
+    // 净值日期
+    val navDateStr = item.navDate ?: item.fundData?.pDate ?: "--"
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(enabled = !isEditing) { onClick() },
@@ -43,14 +60,22 @@ fun FundCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            // ========== 第一行：名称 + 代码 + 日涨跌幅 ==========
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                // 左侧：特别关注星标 + 名称 + 代码
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     if (item.entity.isFavorite) {
-                        Icon(Icons.Default.Star, contentDescription = "特别关注", tint = UpRed, modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Default.Star, contentDescription = "特别关注",
+                            tint = UpRed, modifier = Modifier.size(16.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
                     }
                     Text(
@@ -61,24 +86,97 @@ fun FundCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        item.entity.code,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
                 }
-                Text(changeRate.formatPercent(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = rateColor)
+
+                // 右侧：日涨跌幅
+                Text(
+                    effectiveRate.formatPercent(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = effectiveRateColor
+                )
             }
 
+            // ========== 第二行：近1年收益率 + 净值(日期) ==========
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showGSZ && !isEditing) {
-                    Text("估算净值: ${item.fundData?.gsz ?: "--"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // 近一年收益率
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("近1年 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        return1Y?.formatPercent() ?: "--",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = return1YColor
+                    )
                 }
-                if (isEditing) {
-                    Text("代码: ${item.entity.code}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // 净值 + 日期
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("净值 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        String.format("%.4f", effectiveNav),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        " ($navDateStr)",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Text(item.fundData?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
+            // ========== 第三行：涨跌幅标记 + 估值 + 更新时间 ==========
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (hasReplace) "日涨跌 " else "估涨跌 ",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        effectiveRate.formatPercent(),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = effectiveRateColor
+                    )
+                    if (hasReplace) {
+                        Text(
+                            " (已更新)",
+                            fontSize = 10.sp,
+                            color = UpRed.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+                if (showGSZ && !isEditing) {
+                    Text(
+                        "估值 ${item.fundData?.gsz ?: "--"}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        item.fundData?.gzTime?.takeLast(8) ?: "--",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // ========== 编辑模式 ==========
             if (isEditing) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -116,11 +214,15 @@ fun FundCard(
                 }
             }
 
+            // ========== 持有额/收益行（非编辑模式） ==========
             if (!isEditing) {
                 val hasExtraInfo = showAmount || showGains || showCost || showCostRate
                 if (hasExtraInfo) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         if (showAmount) {
                             Column {
                                 Text("持有额", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -130,19 +232,31 @@ fun FundCard(
                         if (showGains) {
                             Column {
                                 Text("估算收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.estimatedGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.estimatedGain >= 0) UpRed else DownGreen)
+                                Text(
+                                    item.estimatedGain.formatGain(), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (item.estimatedGain >= 0) UpRed else DownGreen
+                                )
                             }
                         }
                         if (showCost) {
                             Column {
                                 Text("持有收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.costGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGain >= 0) UpRed else DownGreen)
+                                Text(
+                                    item.costGain.formatGain(), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (item.costGain >= 0) UpRed else DownGreen
+                                )
                             }
                         }
                         if (showCostRate && item.entity.costPrice > 0) {
                             Column {
                                 Text("持有收益率", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(item.costGainRate.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGainRate >= 0) UpRed else DownGreen)
+                                Text(
+                                    item.costGainRate.formatPercent(), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (item.costGainRate >= 0) UpRed else DownGreen
+                                )
                             }
                         }
                     }
