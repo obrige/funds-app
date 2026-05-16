@@ -7,7 +7,7 @@ import retrofit2.http.Url
 
 interface FundApi {
 
-    // 获取基金实时估值数据 (与原项目一致)
+    // 获取基金实时估值数据 (与原项目 App.vue getData 一致)
     @GET("FundMNewApi/FundMNFInfo")
     suspend fun getFundRealtimeData(
         @Query("Fcodes") codes: String,
@@ -20,7 +20,7 @@ interface FundApi {
         @Query("deviceid") deviceId: String = "android_fund_helper"
     ): FundListResponse
 
-    // 搜索基金 (原项目用 m=9, 域名是 fundsuggest.eastmoney.com)
+    // 搜索基金 (与原项目 App.vue remoteMethod 一致: m=9, fundsuggest域名)
     @GET
     suspend fun searchFund(
         @Url url: String = "https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx",
@@ -97,22 +97,20 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): IndexQuoteResponse
 
-    // 获取行业板块
+    // 行业板块 (与原项目 marketBar.vue 一致: fs=m:90+t:2, fid=f62)
     @GET("https://push2.eastmoney.com/api/qt/clist/get")
     suspend fun getSectors(
         @Query("pn") pn: Int = 1,
-        @Query("pz") pz: Int = 30,
+        @Query("pz") pz: Int = 500,
         @Query("po") po: Int = 1,
         @Query("np") np: Int = 1,
-        @Query("fltt") fltt: Int = 2,
-        @Query("invt") invt: Int = 2,
-        @Query("fid") fid: String = "f3",
-        @Query("fs") fs: String = "b:BK0475+f:!50",
-        @Query("fields") fields: String = "f2,f3,f12,f14,f62,f184",
+        @Query("fields") fields: String = "f12,f13,f14,f62",
+        @Query("fid") fid: String = "f62",
+        @Query("fs") fs: String = "m:90+t:2",
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): SectorResponse
 
-    // 大盘资金流向
+    // 大盘资金流向 (与原项目 marketLine.vue 一致)
     @GET("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get")
     suspend fun getMarketFundFlow(
         @Query("secid") secId: String = "1.000001",
@@ -123,7 +121,7 @@ interface FundApi {
         @Query("_") timestamp: Long = System.currentTimeMillis()
     ): FundFlowResponse
 
-    // 北向资金（沪港通+深港通）
+    // 北向资金 (与原项目 marketS2N.vue 一致)
     @GET("https://push2.eastmoney.com/api/qt/kamt.rtmin/get")
     suspend fun getNorthSouthFlow(
         @Query("fields1") fields1: String = "f1,f2,f3,f4",
