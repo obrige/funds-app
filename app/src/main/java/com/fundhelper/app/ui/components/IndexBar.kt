@@ -22,62 +22,34 @@ import com.fundhelper.app.ui.theme.UpRed
 import com.fundhelper.app.util.Constants
 import com.fundhelper.app.util.formatPercent
 
+private const val INDICES_PER_ROW = 4
+
 @Composable
 fun IndexBar(
     indices: List<IndexDisplayItem>,
     isEditing: Boolean,
     onRemoveIndex: (String) -> Unit,
-    onAddIndex: (String, String, String, Int) -> Unit
+    onAddIndex: (String, String, String, Int) -> Unit,
+    onIndexClick: ((IndexDisplayItem) -> Unit)? = null
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
     Column {
-        // 指数横向滚动显示
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            indices.take(4).forEach { item ->
-                val color = if ((item.quote?.changeRate ?: 0.0) >= 0) UpRed else DownGreen
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .clickable(enabled = !isEditing) { }
-                        .padding(horizontal = 6.dp, vertical = 8.dp)
-                ) {
-                    if (isEditing) {
-                        IconButton(
-                            onClick = { onRemoveIndex(item.entity.secId) },
-                            modifier = Modifier.size(16.dp).align(Alignment.TopEnd)
-                        ) {
-                            Icon(Icons.Default.Close, "删除", modifier = Modifier.size(12.dp))
-                        }
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(item.entity.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                        Text(item.quote?.price?.toString() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
-                        Text(item.quote?.changeRate?.formatPercent() ?: "--", fontSize = 11.sp, color = color)
-                    }
-                }
-            }
-        }
-
-        // 超过4个指数时显示第二行
-        if (indices.size > 4) {
+        // 动态分块显示，每行 INDICES_PER_ROW 个，自动延展不限数量
+        val chunks = indices.chunked(INDICES_PER_ROW)
+        chunks.forEach { chunk ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                indices.drop(4).forEach { item ->
+                chunk.forEach { item ->
                     val color = if ((item.quote?.changeRate ?: 0.0) >= 0) UpRed else DownGreen
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .clickable(enabled = !isEditing) { }
+                            .clickable(enabled = !isEditing) { onIndexClick?.invoke(item) }
                             .padding(horizontal = 6.dp, vertical = 8.dp)
                     ) {
                         if (isEditing) {
@@ -95,11 +67,15 @@ fun IndexBar(
                         }
                     }
                 }
+                // 补齐不足 INDICES_PER_ROW 的空白占位
+                repeat(INDICES_PER_ROW - chunk.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
 
-        // 编辑模式下显示添加按钮
-        if (isEditing && indices.size < 8) {
+        // 编辑模式：始终显示添加按钮（不限数量）
+        if (isEditing) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.Center
@@ -147,7 +123,13 @@ fun AddIndexDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(enabled = !exists) {
-                                val market = if (secId.startsWith("0.")) 0 else 1
+                                val market = when {
+                                    secId.startsWith("0.") -> 0
+                                    secId.startsWith("100.") -> 100
+                                    secId.startsWith("105.") -> 105
+                                    secId.startsWith("113.") -> 113
+                                    else -> 1
+                                }
                                 onAdd(secId, name, code, market)
                             }
                             .padding(vertical = 10.dp, horizontal = 4.dp),
