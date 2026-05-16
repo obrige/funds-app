@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -34,186 +32,119 @@ import com.fundhelper.app.ui.theme.UpRed
 import com.fundhelper.app.util.formatAmount
 import com.fundhelper.app.util.formatPercent
 
-// CSV 解析: 大盘资金 klines → "时间,主力,小单,中单,大单,超大单,..."
 private data class FlowParsed(val time: String, val main: Double, val small: Double, val mid: Double, val big: Double, val superVal: Double)
-
-private fun parseFlowCsv(lines: List<String>): List<FlowParsed> = lines.mapNotNull { line ->
-    val arr = line.split(",")
-    if (arr.size < 6) null else FlowParsed(
-        time = arr[0], main = arr[1].toDoubleOrNull() ?: 0.0, small = arr[2].toDoubleOrNull() ?: 0.0,
-        mid = arr[3].toDoubleOrNull() ?: 0.0, big = arr[4].toDoubleOrNull() ?: 0.0, superVal = arr[5].toDoubleOrNull() ?: 0.0
-    )
+private fun parseFlowCsv(lines: List<String>) = lines.mapNotNull { line ->
+    val a = line.split(","); if (a.size < 6) null else FlowParsed(a[0], a[1].toDoubleOrNull() ?: 0.0, a[2].toDoubleOrNull() ?: 0.0, a[3].toDoubleOrNull() ?: 0.0, a[4].toDoubleOrNull() ?: 0.0, a[5].toDoubleOrNull() ?: 0.0)
 }
 
-// CSV 解析: 北向/南向 → "时间,沪(港)股通,余额,深(港)股通,余额,合计"
 private data class NsParsed(val time: String, val sh: Double, val sz: Double, val total: Double)
-
-private fun parseNsCsv(lines: List<String>): List<NsParsed> = lines.mapNotNull { line ->
-    val arr = line.split(",")
-    if (arr.size < 6) null else NsParsed(
-        time = arr[0], sh = arr[1].toDoubleOrNull() ?: 0.0, sz = arr[3].toDoubleOrNull() ?: 0.0,
-        total = arr[5].toDoubleOrNull() ?: 0.0
-    )
+private fun parseNsCsv(lines: List<String>) = lines.mapNotNull { line ->
+    val a = line.split(","); if (a.size < 6) null else NsParsed(a[0], a[1].toDoubleOrNull() ?: 0.0, a[3].toDoubleOrNull() ?: 0.0, a[5].toDoubleOrNull() ?: 0.0)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MarketCenterScreen(
-    onBack: () -> Unit,
-    viewModel: MarketViewModel = hiltViewModel()
-) {
+fun MarketCenterScreen(onBack: () -> Unit, viewModel: MarketViewModel = hiltViewModel()) {
     val sectors by viewModel.sectors.collectAsStateWithLifecycle()
     val marketFlowRaw by viewModel.marketFlow.collectAsStateWithLifecycle()
     val northFlowRaw by viewModel.northFlow.collectAsStateWithLifecycle()
     val southFlowRaw by viewModel.southFlow.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
-
     LaunchedEffect(Unit) { viewModel.loadAll() }
-
-    val tabs = listOf("大盘资金", "行业板块", "北向资金", "南向资金")
-
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("行情中心") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "返回") } },
-                actions = { IconButton(onClick = { viewModel.loadAll() }) { Icon(Icons.Default.Refresh, "刷新") } }
-            )
-        }
-    ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
+        topBar = { TopAppBar(title = { Text("行情中心") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "返回") } }, actions = { IconButton(onClick = { viewModel.loadAll() }) { Icon(Icons.Default.Refresh, "刷新") } }) }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
             ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 8.dp) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title, fontSize = 13.sp) })
-                }
+                listOf("大盘资金", "行业板块", "北向资金", "南向资金").forEachIndexed { i, t -> Tab(selected = selectedTab == i, onClick = { selectedTab = i }, text = { Text(t, fontSize = 13.sp) }) }
             }
             when (selectedTab) {
-                0 -> MarketFundFlowTab(marketFlowRaw, isLoading)
+                0 -> FundFlowTab(marketFlowRaw, isLoading)
                 1 -> SectorTab(sectors, isLoading)
-                2 -> FlowTab(northFlowRaw, isLoading, "北向资金", "沪股通", "深股通")
-                3 -> FlowTab(southFlowRaw, isLoading, "南向资金", "港股通(沪)", "港股通(深)")
+                2 -> NsFlowTab(northFlowRaw, isLoading, "北向资金", "沪股通", "深股通")
+                3 -> NsFlowTab(southFlowRaw, isLoading, "南向资金", "港股通(沪)", "港股通(深)")
             }
         }
     }
 }
 
-// ==================== Tab 0: 大盘资金流向 ====================
 @Composable
-fun MarketFundFlowTab(rawLines: List<String>, isLoading: Boolean) {
-    if (isLoading) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
-    val flows = remember(rawLines) { parseFlowCsv(rawLines) }
-    if (flows.isEmpty()) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
-
-    val mainData = flows.map { it.main / 1_0000_0000 }
-    val superData = flows.map { it.superVal / 1_0000_0000 }
-    val bigData = flows.map { it.big / 1_0000_0000 }
-    val midData = flows.map { it.mid / 1_0000_0000 }
-    val smallData = flows.map { it.small / 1_0000_0000 }
-
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        val last = flows.lastOrNull()
-        if (last != null) {
-            Card(modifier = Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("资金流向概览", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowSummaryRow("主力净流入", last.main / 1_0000_0000)
-                    FlowSummaryRow("超大单净流入", last.superVal / 1_0000_0000)
-                    FlowSummaryRow("大单净流入", last.big / 1_0000_0000)
-                    FlowSummaryRow("中单净流入", last.mid / 1_0000_0000)
-                    FlowSummaryRow("小单净流入", last.small / 1_0000_0000)
+fun FundFlowTab(raw: List<String>, isLoading: Boolean) {
+    if (isLoading) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
+    val flows = remember(raw) { parseFlowCsv(raw) }
+    if (flows.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
+    val mainD = flows.map { it.main / 1_0000_0000 }; val supD = flows.map { it.superVal / 1_0000_0000 }; val bigD = flows.map { it.big / 1_0000_0000 }; val midD = flows.map { it.mid / 1_0000_0000 }; val smD = flows.map { it.small / 1_0000_0000 }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        flows.lastOrNull()?.let { last ->
+            Card(Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("资金流向概览", fontWeight = FontWeight.Bold, fontSize = 14.sp); Spacer(Modifier.height(8.dp))
+                    SRow("主力净流入", last.main / 1_0000_0000); SRow("超大单净流入", last.superVal / 1_0000_0000); SRow("大单净流入", last.big / 1_0000_0000); SRow("中单净流入", last.mid / 1_0000_0000); SRow("小单净流入", last.small / 1_0000_0000)
                 }
             }
         }
         Text("分时资金流向（亿元）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        MultiLineChart(
-            lines = listOf("主力" to mainData to UpRed, "超大单" to superData to Color(0xFFFF6B35), "大单" to bigData to Color(0xFFFF9800), "中单" to midData to Color(0xFF2196F3), "小单" to smallData to DownGreen),
-            modifier = Modifier.fillMaxWidth().padding(12.dp).height(240.dp)
-        )
+        MLineChart(listOf("主力" to mainD to UpRed, "超大单" to supD to Color(0xFFFF6B35), "大单" to bigD to Color(0xFFFF9800), "中单" to midD to Color(0xFF2196F3), "小单" to smD to DownGreen), Modifier.fillMaxWidth().padding(12.dp).height(240.dp))
         Text("明细（最近20条）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         flows.takeLast(20).reversed().forEach { f ->
             val m = f.main / 1_0000_0000
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), shape = RoundedCornerShape(6.dp)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), shape = RoundedCornerShape(6.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(f.time.takeLast(8), fontSize = 11.sp, modifier = Modifier.weight(1f))
                     Text(String.format("%.2f亿", m), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (m >= 0) UpRed else DownGreen)
                 }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
-@Composable
-fun FlowSummaryRow(label: String, value: Double) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+@Composable fun SRow(label: String, value: Double) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(String.format("%.2f 亿", value), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (value >= 0) UpRed else DownGreen)
     }
 }
 
-// ==================== Tab 1: 行业板块 ====================
+// ==================== 行业板块 ====================
 @Composable
 fun SectorTab(sectors: List<SectorItem>, isLoading: Boolean) {
-    if (isLoading) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
-    if (sectors.isEmpty()) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
+    if (isLoading) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
+    if (sectors.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
 
-    val topSectors = sectors.take(30)
-    val barData = topSectors.map { (it.mainNetInflow ?: 0.0) / 1_0000_0000 }
-    val barLabels = topSectors.map { it.name ?: "" }
+    val barData = sectors.map { (it.mainNetInflow ?: 0.0) / 1_0000_0000 }
+    val barLabels = sectors.map { it.name ?: "" }
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("主力净流入排行（亿元）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        HorizontalBarChart(data = barData, labels = barLabels, modifier = Modifier.fillMaxWidth().padding(12.dp))
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("全部板块（${sectors.size}）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        sectors.forEach { sector ->
-            val color = if ((sector.changeRate ?: 0.0) >= 0) UpRed else DownGreen
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), shape = RoundedCornerShape(8.dp)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(sector.name ?: "--", fontSize = 13.sp, modifier = Modifier.weight(2f), maxLines = 1)
-                    Text(sector.changeRate?.formatPercent() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = color, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    Text(sector.mainNetInflow?.formatAmount() ?: "--", fontSize = 12.sp, color = if ((sector.mainNetInflow ?: 0.0) >= 0) UpRed else DownGreen, modifier = Modifier.weight(1.5f), textAlign = TextAlign.End)
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text("主力净流入排行（亿元）全部${sectors.size}个板块", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        HBarChart(data = barData, labels = barLabels, modifier = Modifier.fillMaxWidth().padding(12.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
-// ==================== Tab 2/3: 北向/南向资金 ====================
+// ==================== 北向/南向 ====================
 @Composable
-fun FlowTab(rawLines: List<String>, isLoading: Boolean, title: String, name1: String, name2: String) {
-    if (isLoading) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
-    val flows = remember(rawLines) { parseNsCsv(rawLines) }
-    if (flows.isEmpty()) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
-
-    val lastValid = flows.lastOrNull { it.total != 0.0 } ?: flows.lastOrNull() ?: return
-    val totalLine = flows.map { it.total / 10000 }
-    val shLine = flows.map { it.sh / 10000 }
-    val szLine = flows.map { it.sz / 10000 }
-
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Card(modifier = Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text("$title 当日汇总", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                FlowSummaryRow("$name1 净流入", lastValid.sh / 10000)
-                FlowSummaryRow("$name2 净流入", lastValid.sz / 10000)
-                FlowSummaryRow("${title}合计", lastValid.total / 10000)
+fun NsFlowTab(raw: List<String>, isLoading: Boolean, title: String, n1: String, n2: String) {
+    if (isLoading) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
+    val flows = remember(raw) { parseNsCsv(raw) }
+    if (flows.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
+    val last = flows.lastOrNull { it.total != 0.0 } ?: flows.lastOrNull() ?: return
+    val tL = flows.map { it.total / 10000 }; val sL = flows.map { it.sh / 10000 }; val zL = flows.map { it.sz / 10000 }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Card(Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
+            Column(Modifier.padding(12.dp)) {
+                Text("$title 当日汇总", fontWeight = FontWeight.Bold, fontSize = 14.sp); Spacer(Modifier.height(8.dp))
+                SRow("$n1 净流入", last.sh / 10000); SRow("$n2 净流入", last.sz / 10000); SRow("${title}合计", last.total / 10000)
             }
         }
         Text("$title 分时走势（亿元）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        MultiLineChart(
-            lines = listOf(title to totalLine to UpRed, name1 to shLine to Color(0xFFFF9800), name2 to szLine to Color(0xFF2196F3)),
-            modifier = Modifier.fillMaxWidth().padding(12.dp).height(200.dp)
-        )
+        MLineChart(listOf(title to tL to UpRed, n1 to sL to Color(0xFFFF9800), n2 to zL to Color(0xFF2196F3)), Modifier.fillMaxWidth().padding(12.dp).height(200.dp))
         Text("明细（最近20条）", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         flows.takeLast(20).reversed().forEach { f ->
             val t = f.total / 10000; val sh = f.sh / 10000; val sz = f.sz / 10000
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), shape = RoundedCornerShape(6.dp)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), shape = RoundedCornerShape(6.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(f.time.takeLast(8), fontSize = 11.sp, modifier = Modifier.weight(1f))
                     Text(String.format("%.2f", t), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (t >= 0) UpRed else DownGreen, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                     Text(String.format("%.2f", sh), fontSize = 11.sp, color = if (sh >= 0) UpRed else DownGreen, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
@@ -221,72 +152,51 @@ fun FlowTab(rawLines: List<String>, isLoading: Boolean, title: String, name1: St
                 }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
-// ==================== 通用图表 ====================
-
+// ==================== 多线折线图 ====================
 @Composable
-fun MultiLineChart(lines: List<Pair<Pair<String, List<Double>>, Color>>, modifier: Modifier = Modifier) {
-    if (lines.isEmpty() || lines.any { it.first.second.isEmpty() }) {
-        Box(modifier = modifier, contentAlignment = Alignment.Center) { Text("暂无图表数据", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        return
-    }
-    val allValues = lines.flatMap { it.first.second }
-    val minVal = allValues.min(); val maxVal = allValues.max()
-    val range = (maxVal - minVal).coerceAtLeast(0.01)
-    Card(modifier = modifier, shape = RoundedCornerShape(12.dp)) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                lines.forEach { (pair, color) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(color))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(pair.first, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+fun MLineChart(lines: List<Pair<Pair<String, List<Double>>, Color>>, modifier: Modifier = Modifier) {
+    if (lines.isEmpty() || lines.any { it.first.second.isEmpty() }) { Box(modifier, contentAlignment = Alignment.Center) { Text("暂无图表数据", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
+    val all = lines.flatMap { it.first.second }; val minV = all.min(); val maxV = all.max(); val rng = (maxV - minV).coerceAtLeast(0.01)
+    Card(modifier, shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.padding(8.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                lines.forEach { (p, c) -> Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(c)); Spacer(Modifier.width(4.dp)); Text(p.first, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Canvas(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                val w = size.width; val h = size.height; val pad = 8f
-                val drawW = w - pad * 2; val drawH = h - pad * 2
-                if (minVal < 0 && maxVal > 0) {
-                    val zeroY = pad + drawH * (1 - ((0f - minVal) / range)).toFloat()
-                    drawLine(Color.Gray.copy(alpha = 0.3f), Offset(pad, zeroY), Offset(pad + drawW, zeroY), strokeWidth = 1f)
-                }
-                lines.forEach { (pair, color) ->
-                    val data = pair.second
-                    if (data.size < 2) return@forEach
-                    val stepX = drawW / (data.size - 1)
-                    val path = Path()
-                    data.forEachIndexed { i, v ->
-                        val x = pad + i * stepX; val y = pad + drawH * (1 - ((v.toFloat() - minVal) / range)).toFloat()
-                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    }
-                    drawPath(path, color = color, style = Stroke(width = 2f))
-                }
+            Spacer(Modifier.height(4.dp))
+            Canvas(Modifier.fillMaxWidth().weight(1f)) {
+                val w = size.width; val h = size.height; val pad = 8f; val dW = w - pad * 2; val dH = h - pad * 2
+                if (minV < 0 && maxV > 0) { val zY = pad + dH * (1 - ((0f - minV) / rng)).toFloat(); drawLine(Color.Gray.copy(alpha = 0.3f), Offset(pad, zY), Offset(pad + dW, zY), strokeWidth = 1f) }
+                lines.forEach { (p, c) -> val d = p.second; if (d.size >= 2) { val sX = dW / (d.size - 1); val path = Path(); d.forEachIndexed { i, v -> val x = pad + i * sX; val y = pad + dH * (1 - ((v.toFloat() - minV) / rng)).toFloat(); if (i == 0) path.moveTo(x, y) else path.lineTo(x, y) }; drawPath(path, c, style = Stroke(2f)) } }
             }
         }
     }
 }
 
+// ==================== 横向柱状图：零线居中，正值右红，负值左绿 ====================
 @Composable
-fun HorizontalBarChart(data: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
+fun HBarChart(data: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) return
     val maxAbs = maxOf(data.maxOrNull() ?: 0.0, kotlin.math.abs(data.minOrNull() ?: 0.0)).coerceAtLeast(0.01)
-    Card(modifier = modifier, shape = RoundedCornerShape(12.dp)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            data.forEachIndexed { index, value ->
-                val barColor = if (value >= 0) UpRed else DownGreen
-                val label = if (index < labels.size) labels[index] else ""
-                val fraction = (kotlin.math.abs(value) / maxAbs).toFloat().coerceAtMost(1f)
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(label, fontSize = 10.sp, modifier = Modifier.width(64.dp), maxLines = 1)
-                    Box(modifier = Modifier.weight(1f).height(16.dp)) {
-                        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).clip(RoundedCornerShape(3.dp)).background(barColor.copy(alpha = 0.7f)))
+    Card(modifier, shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.padding(8.dp).verticalScroll(rememberScrollState())) {
+            data.forEachIndexed { i, v ->
+                val c = if (v >= 0) UpRed else DownGreen
+                val label = labels.getOrElse(i) { "" }
+                val frac = (kotlin.math.abs(v) / maxAbs).toFloat().coerceAtMost(1f)
+                Row(Modifier.fillMaxWidth().padding(vertical = 1.dp).height(22.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, fontSize = 9.sp, modifier = Modifier.width(56.dp), maxLines = 1)
+                    // 零线居中：左半=负值区(绿)，右半=正值区(红)
+                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        // 零线
+                        Box(Modifier.fillMaxHeight().width(1.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)))
+                        // 正/负值柱
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(frac / 2).align(if (v >= 0) Alignment.CenterStart else Alignment.CenterEnd).clip(RoundedCornerShape(3.dp)).background(c.copy(alpha = 0.7f)))
                     }
-                    Text(String.format("%.2f", value), fontSize = 10.sp, modifier = Modifier.width(56.dp), textAlign = TextAlign.End, color = barColor)
+                    Text(String.format("%.2f", v), fontSize = 9.sp, modifier = Modifier.width(52.dp), textAlign = TextAlign.End, color = c)
                 }
             }
         }
