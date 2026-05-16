@@ -3,4 +3,5 @@
     <color name="up_color">#F56C6C</color>
     <color name="down_color">#4EB61B</color>
     <color name="primary">#1976D2</color>
+    <color name="ic_launcher_background">#1976D2</color>
 </resources>
