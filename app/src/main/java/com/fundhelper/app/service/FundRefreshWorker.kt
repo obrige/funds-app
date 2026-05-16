@@ -1,7 +1,6 @@
 package com.fundhelper.app.service
 
 import android.content.Context
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
 import androidx.hilt.work.HiltWorker
 import androidx.work.*
@@ -33,7 +32,7 @@ class FundRefreshWorker @AssistedInject constructor(
             }
 
             try {
-                FundWidget().updateAll(GlanceAppWidgetManager(applicationContext))
+                FundWidget().updateAll(applicationContext)
             } catch (_: Exception) {}
 
             return Result.success()
