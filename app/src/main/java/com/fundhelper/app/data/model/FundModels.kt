@@ -176,8 +176,6 @@ data class ManagerHistory(
 )
 
 // 估值走势图 (charts.vue: FundVarietieValuationDetail.ashx)
-// Datas: ["09:30,1.2345,0.12", "09:31,1.2346,0.13", ...]
-// Expansion: { "DWJZ": 1.2345 }
 @JsonClass(generateAdapter = true)
 data class FundTrendResponse(
     val Datas: List<String>?,
@@ -321,7 +319,10 @@ data class FundDisplayItem(
     val estimatedGain: Double = 0.0,
     val holdingAmount: Double = 0.0,
     val costGain: Double = 0.0,
-    val costGainRate: Double = 0.0
+    val costGainRate: Double = 0.0,
+    val return1Y: Double? = null,
+    val fundNav: Double? = null,
+    val navDate: String? = null
 )
 
 data class IndexDisplayItem(
