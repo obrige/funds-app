@@ -30,7 +30,16 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: set -o pipefail && ./gradlew assembleDebug --stacktrace 2>&1 | tee build-output.log
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build-output.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "=== BUILD FAILED - Compilation Errors ==="
+            grep -E "^e:" build-output.log || true
+            echo "=== End of Errors ==="
+            exit $EXIT_CODE
+          fi
 
       - name: Upload build log
         if: always()
