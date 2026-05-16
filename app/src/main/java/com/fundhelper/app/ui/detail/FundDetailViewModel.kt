@@ -21,32 +21,22 @@ class FundDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(FundDetailUiState())
     val uiState: StateFlow<FundDetailUiState> = _uiState.asStateFlow()
 
-    // 当前图表时间范围 (1m, 3m, 6m, y, 3y)
     private val _chartRange = MutableStateFlow("y")
     val chartRange: StateFlow<String> = _chartRange.asStateFlow()
 
-    // 当前图表类型 (0=净值走势, 1=累计收益)
-    private val _chartType = MutableStateFlow(0)
-    val chartType: StateFlow<Int> = _chartType.asStateFlow()
-
-    init {
-        loadAll()
-    }
+    init { loadAll() }
 
     fun loadAll() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-
             val entity = repository.getAllFunds().first().find { it.code == fundCode }
             _uiState.update { it.copy(fund = entity) }
-
             launch { loadFundData() }
             launch { loadFundInfo() }
             launch { loadTrend() }
             launch { loadChart(_chartRange.value) }
             launch { loadPosition() }
             launch { loadManager() }
-
             _uiState.update { it.copy(isLoading = false) }
         }
     }
@@ -63,11 +53,11 @@ class FundDetailViewModel @Inject constructor(
 
     private suspend fun loadTrend() {
         val response = repository.getFundTrend(fundCode)
-        val trend = response?.Datas?.trend ?: emptyList()
-        _uiState.update { it.copy(trendData = trend) }
+        val trend = response?.Datas ?: emptyList()
+        val dwjz = response?.Expansion?.dwjz ?: 0.0
+        _uiState.update { it.copy(trendData = trend, trendDwjz = dwjz) }
     }
 
-    // 加载图表数据（净值走势 + 累计收益）
     fun loadChart(range: String) {
         _chartRange.value = range
         viewModelScope.launch {
@@ -78,26 +68,23 @@ class FundDetailViewModel @Inject constructor(
 
     private suspend fun loadNetDiagram(range: String) {
         val response = repository.getFundNetDiagram(fundCode, range)
-        val items = response?.Datas ?: emptyList()
-        _uiState.update { it.copy(netDiagramData = items) }
+        _uiState.update { it.copy(netDiagramData = response?.Datas ?: emptyList()) }
     }
 
     private suspend fun loadYieldDiagram(range: String) {
         val response = repository.getFundYieldDiagram(fundCode, range)
-        val items = response?.Datas ?: emptyList()
-        val indexName = response?.Expansion?.indexName ?: "沪深300"
-        _uiState.update { it.copy(yieldDiagramData = items, yieldIndexName = indexName) }
-    }
-
-    fun setChartType(type: Int) {
-        _chartType.value = type
+        _uiState.update {
+            it.copy(
+                yieldDiagramData = response?.Datas ?: emptyList(),
+                yieldIndexName = response?.Expansion?.indexName ?: "沪深300"
+            )
+        }
     }
 
     private suspend fun loadPosition() {
         val response = repository.getFundPosition(fundCode)
         val stocks = response?.Datas?.fundStocks ?: emptyList()
         _uiState.update { it.copy(positions = stocks, positionDate = response?.Expansion) }
-
         if (stocks.isNotEmpty()) {
             val secIds = stocks.joinToString(",") { "${it.exchange}.${it.stockCode}" }
             try {
@@ -109,8 +96,7 @@ class FundDetailViewModel @Inject constructor(
 
     private suspend fun loadManager() {
         val response = repository.getFundManager(fundCode)
-        val history = response?.Datas?.fundMManager ?: emptyList()
-        _uiState.update { it.copy(managerHistory = history) }
+        _uiState.update { it.copy(managerHistory = response?.Datas?.fundMManager ?: emptyList()) }
     }
 
     fun addPosition(shares: Double) {
@@ -125,8 +111,7 @@ class FundDetailViewModel @Inject constructor(
     fun reducePosition(shares: Double) {
         viewModelScope.launch {
             val current = _uiState.value.fund?.shares ?: 0.0
-            val newShares = maxOf(0.0, current - shares)
-            repository.updateShares(fundCode, newShares)
+            repository.updateShares(fundCode, maxOf(0.0, current - shares))
             val updated = repository.getAllFunds().first().find { it.code == fundCode }
             _uiState.update { it.copy(fund = updated) }
         }
