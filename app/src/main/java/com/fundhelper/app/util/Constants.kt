@@ -20,10 +20,11 @@ object Constants {
         Triple("0.899050", "北证50", "899050"),
         Triple("100.HSI", "恒生指数", "HSI"),
         Triple("100.HSCEI", "国企指数", "HSCEI"),
-        Triple("113.AU9999", "黄金9999", "AU9999"),
-        Triple("105.IXIC", "纳斯达克", "IXIC"),
-        Triple("105.DJIA", "道琼斯", "DJIA"),
-        Triple("105.SPX", "标普500", "SPX")
+        Triple("IXIC.USI", "纳斯达克", "IXIC"),
+        Triple("DJIA.USI", "道琼斯", "DJIA"),
+        Triple("SPX.USI", "标普500", "SPX"),
+        Triple("AU9999.SGE", "黄金9999", "AU9999"),
+        Triple("XAUUSD.FX", "伦敦金", "XAUUSD")
     )
 
     const val REFRESH_INTERVAL_WORKER = "fund_refresh_worker"
