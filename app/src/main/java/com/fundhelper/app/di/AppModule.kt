@@ -7,11 +7,9 @@ import com.fundhelper.app.data.db.AppDatabase
 import com.fundhelper.app.data.db.FundDao
 import com.fundhelper.app.data.db.GroupDao
 import com.fundhelper.app.data.db.IndexDao
-import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.JsonDataException
-import com.squareup.moshi.JsonReader
-import com.squareup.moshi.JsonWriter
+import com.squareup.moshi.FromJson
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.ToJson
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
 import dagger.Provides
@@ -25,6 +23,18 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+class DoubleAdapter {
+    @FromJson
+    fun fromJson(value: Any?): Double? = when (value) {
+        is Number -> value.toDouble()
+        is String -> value.toDoubleOrNull()
+        else -> null
+    }
+
+    @ToJson
+    fun toJson(value: Double?): Double? = value
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -32,19 +42,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
-        .add(Double::class.java, object : JsonAdapter<Double>() {
-            override fun fromJson(reader: JsonReader): Double? {
-                return when (reader.peek()) {
-                    JsonReader.Token.NUMBER -> reader.nextDouble()
-                    JsonReader.Token.STRING -> reader.nextString().toDoubleOrNull()
-                    JsonReader.Token.NULL -> { reader.nextNull(); null }
-                    else -> throw JsonDataException("Expected double but got ${reader.peek()}")
-                }
-            }
-            override fun toJson(writer: JsonWriter, value: Double?) {
-                value?.let { writer.value(it) } ?: writer.nullValue()
-            }
-        }.nullSafe())
+        .add(DoubleAdapter())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
