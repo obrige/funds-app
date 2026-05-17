@@ -57,7 +57,7 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("自选基金助手", style = MaterialTheme.typography.titleMedium)
+                        Text("基金助手", style = MaterialTheme.typography.titleMedium)
                         Text(
                             TradingTimeUtil.getStatusText(uiState.tradingStatus),
                             style = MaterialTheme.typography.bodySmall,
