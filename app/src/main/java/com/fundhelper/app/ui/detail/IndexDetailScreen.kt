@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,15 +35,11 @@ fun IndexDetailScreen(
 ) {
     val quote by viewModel.quote.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val klineData by viewModel.klineData.collectAsState()
     val klinePeriod by viewModel.klinePeriod.collectAsState()
+    val chartData by viewModel.chartData.collectAsState()
     LaunchedEffect(secId) { viewModel.loadQuote(secId) }
     val changeRate = quote?.changeRate ?: 0.0; val rateColor = if (changeRate >= 0) UpRed else DownGreen
     val price = quote?.price ?: 0.0; val amount = quote?.amount ?: 0.0
-
-    // K线数据解析: date,open,close,high,low,volume,amount,...
-    val closePrices = remember(klineData) { klineData.mapNotNull { it.split(",").getOrNull(2)?.toDoubleOrNull() } }
-    val klineDates = remember(klineData) { klineData.mapNotNull { it.split(",").getOrNull(0)?.takeLast(5) } }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(name) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "返回") } }, actions = { IconButton(onClick = { viewModel.loadQuote(secId) }) { Icon(Icons.Default.Refresh, "刷新") } }) }
@@ -57,24 +55,15 @@ fun IndexDetailScreen(
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 viewModel.klinePeriods.forEach { p ->
-                    FilterChip(
-                        selected = klinePeriod == p,
-                        onClick = { viewModel.setPeriod(secId, p) },
-                        label = { Text(p.label, fontSize = 12.sp) }
-                    )
+                    FilterChip(selected = klinePeriod == p, onClick = { viewModel.setPeriod(secId, p) }, label = { Text(p.label, fontSize = 12.sp) })
                 }
             }
 
-            // K线图
+            // 百分比K线图
             Spacer(Modifier.height(12.dp))
-            if (closePrices.isNotEmpty()) {
-                IndexKlineChart(closePrices, klineDates)
-                // 最高最低
-                Spacer(Modifier.height(4.dp))
-                val hi = closePrices.max(); val lo = closePrices.min()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("最高: %.2f".format(hi), fontSize = 11.sp, color = UpRed)
-                    Text("最低: %.2f".format(lo), fontSize = 11.sp, color = DownGreen)
+            chartData?.let { cd ->
+                if (cd.prices.isNotEmpty()) {
+                    PercentileChart(cd)
                 }
             }
 
@@ -87,23 +76,57 @@ fun IndexDetailScreen(
 }
 
 @Composable
-fun IndexKlineChart(data: List<Double>, labels: List<String>) {
-    if (data.isEmpty()) return
-    val minV = data.min(); val maxV = data.max(); val rng = (maxV - minV).coerceAtLeast(0.01)
-    val lc = if (data.last() >= data.first()) UpRed else DownGreen
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-        Column(Modifier.padding(12.dp)) {
-            Canvas(Modifier.fillMaxWidth().height(220.dp)) {
-                if (data.size < 2) return@Canvas
-                val w = size.width; val h = size.height; val pad = 16f; val dW = w - pad * 2; val dH = h - pad * 2; val sX = dW / (data.size - 1)
-                val fp = Path(); data.forEachIndexed { i, v -> val x = pad + i * sX; val y = pad + dH * (1 - ((v - minV) / rng)).toFloat(); if (i == 0) { fp.moveTo(x, pad + dH); fp.lineTo(x, y) } else fp.lineTo(x, y) }; fp.lineTo(pad + (data.size - 1) * sX, pad + dH); fp.close(); drawPath(fp, lc.copy(alpha = 0.08f))
-                val lp = Path(); data.forEachIndexed { i, v -> val x = pad + i * sX; val y = pad + dH * (1 - ((v - minV) / rng)).toFloat(); if (i == 0) lp.moveTo(x, y) else lp.lineTo(x, y) }; drawPath(lp, lc, style = Stroke(2.5f))
-                if (data.isNotEmpty()) { val lx = pad + (data.size - 1) * sX; val ly = pad + dH * (1 - ((data.last() - minV) / rng)).toFloat(); drawCircle(lc, 5f, Offset(lx, ly)) }
-            }
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                val sc = minOf(6, labels.size); val st = if (sc > 1) (labels.size - 1) / (sc - 1) else 0
-                for (i in 0 until sc) { val idx = (i * st).coerceAtMost(labels.size - 1); Text(labels[idx], fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+fun PercentileChart(data: KlineChartData) {
+    val pcts = remember(data) { data.prices.map { if (data.allTimeHigh > 0) (it / data.allTimeHigh) * 100 else 100.0 } }
+    val currentPct = data.currentPct
+    val color = if (currentPct >= 50) UpRed else DownGreen
+    Column {
+        // 当前百分位和基准
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("历史最高: %.2f".format(data.allTimeHigh), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("当前: %.0f%%".format(currentPct), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
+        }
+        Spacer(Modifier.height(4.dp))
+        // 可滑动的折线图
+        val chartWidth = (pcts.size * 8).coerceAtLeast(300).dp
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Column(Modifier.horizontalScroll(rememberScrollState()).padding(12.dp)) {
+                Canvas(Modifier.width(chartWidth).height(200.dp)) {
+                    if (pcts.size < 2) return@Canvas
+                    val w = size.width; val h = size.height; val pad = 12f; val dW = w - pad * 2; val dH = h - pad * 2
+                    val sX = dW / (pcts.size - 1)
+                    // 50% 基准线
+                    val midY = pad + dH * 0.5f
+                    drawLine(Color.Gray.copy(alpha = 0.3f), Offset(pad, midY), Offset(pad + dW, midY), 1f)
+                    // 填充区域: >=50%红色, <50%绿色
+                    pcts.forEachIndexed { i, pct ->
+                        val x = pad + i * sX
+                        val y = pad + dH * (1f - (pct / 100f).toFloat())
+                        val barColor = if (pct >= 50) UpRed.copy(alpha = 0.6f) else DownGreen.copy(alpha = 0.6f)
+                        val barHeight = kotlin.math.abs(y - midY).coerceAtLeast(2f)
+                        val barTop = if (pct >= 50) y else midY
+                        drawRect(barColor, Offset(x - 1.5f, barTop), Size(3f, barHeight))
+                    }
+                    // 折线
+                    val lp = Path()
+                    pcts.forEachIndexed { i, pct ->
+                        val x = pad + i * sX
+                        val y = pad + dH * (1f - (pct / 100f).toFloat())
+                        if (i == 0) lp.moveTo(x, y) else lp.lineTo(x, y)
+                    }
+                    drawPath(lp, color, style = Stroke(2f))
+                    // 当前值圆点
+                    val lx = pad + (pcts.size - 1) * sX
+                    val ly = pad + dH * (1f - (pcts.last() / 100f).toFloat())
+                    drawCircle(color, 5f, Offset(lx, ly))
+                }
+                // 日期标签
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.width(chartWidth), horizontalArrangement = Arrangement.SpaceBetween) {
+                    data.dates.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    data.dates.getOrNull(data.dates.size / 2)?.let { Text(it, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    data.dates.lastOrNull()?.let { Text(it, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
             }
         }
     }
