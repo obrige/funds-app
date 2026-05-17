@@ -113,6 +113,19 @@ data class IndexQuoteItem(
     @Json(name = "f6") val amount: Double?
 )
 
+// 指数K线数据
+@JsonClass(generateAdapter = true)
+data class IndexKlineResponse(
+    val data: IndexKlineData?
+)
+@JsonClass(generateAdapter = true)
+data class IndexKlineData(
+    val code: String?,
+    val market: Int?,
+    val name: String?,
+    val klines: List<String>?
+)
+
 @JsonClass(generateAdapter = true)
 data class FundPositionResponse(
     val Datas: FundPositionData?,
