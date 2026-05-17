@@ -7,9 +7,7 @@ import com.fundhelper.app.data.db.AppDatabase
 import com.fundhelper.app.data.db.FundDao
 import com.fundhelper.app.data.db.GroupDao
 import com.fundhelper.app.data.db.IndexDao
-import com.squareup.moshi.FromJson
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.ToJson
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
 import dagger.Provides
@@ -23,18 +21,6 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
-class DoubleAdapter {
-    @FromJson
-    fun fromJson(value: Any?): Double? = when (value) {
-        is Number -> value.toDouble()
-        is String -> value.toDoubleOrNull()
-        else -> null
-    }
-
-    @ToJson
-    fun toJson(value: Double?): Double? = value
-}
-
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -42,7 +28,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
-        .add(DoubleAdapter())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
