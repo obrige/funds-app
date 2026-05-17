@@ -20,38 +20,19 @@ import com.fundhelper.app.util.*
 
 @Composable
 fun FundCard(
-    item: FundDisplayItem,
-    isEditing: Boolean,
-    showGSZ: Boolean,
-    showAmount: Boolean,
-    showGains: Boolean,
-    showCost: Boolean,
-    showCostRate: Boolean,
-    onClick: () -> Unit,
-    onDelete: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onSharesChange: (Double) -> Unit,
-    onCostChange: (Double) -> Unit
+    item: FundDisplayItem, isEditing: Boolean, showGSZ: Boolean, showAmount: Boolean,
+    showGains: Boolean, showCost: Boolean, showCostRate: Boolean,
+    onClick: () -> Unit, onDelete: () -> Unit, onToggleFavorite: () -> Unit,
+    onSharesChange: (Double) -> Unit, onCostChange: (Double) -> Unit
 ) {
     val fd = item.fundData
     val hasReplace = fd?.pDate != null && fd.gzTime != null && fd.pDate == fd.gzTime.take(10)
-
-    // 涨跌幅：已更新用 NAVCHGRT，否则用 GSZZL
-    val effectiveRate = if (hasReplace) (fd?.navChangeRate ?: fd?.gszzl ?: 0.0) else (fd?.gszzl ?: 0.0)
+    // 涨跌幅: 优先用 NAVCHGRT（最新交易日真实涨跌幅）
+    val effectiveRate = fd?.navChangeRate ?: fd?.gszzl ?: 0.0
     val rateColor = if (effectiveRate >= 0) UpRed else DownGreen
-
-    // 涨跌额 = 净值 * 涨跌幅 / 100（前一个交易日相对增减值）
-    val nav = fd?.nav ?: 0.0
-    val changeAmount = nav * effectiveRate / 100.0
-
-    // 净值：优先 FundInfo 的 DWJZ
     val displayNav = item.fundNav ?: fd?.nav
     val navDateStr = item.navDate ?: fd?.pDate ?: ""
-
-    // 估值
     val gsz = fd?.gsz
-
-    // 近一年
     val return1Y = item.return1Y
 
     Card(
@@ -61,22 +42,18 @@ fun FundCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            // ====== Row 1: 名称+代码 | 涨跌幅 ======
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            // Row 1: 名称+代码 | 涨跌幅
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    if (item.entity.isFavorite) {
-                        Icon(Icons.Default.Star, "关注", tint = UpRed, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
+                    if (item.entity.isFavorite) { Icon(Icons.Default.Star, "关注", tint = UpRed, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)) }
                     Text(item.entity.name, fontWeight = FontWeight.Medium, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(item.entity.code, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                 }
                 Text(effectiveRate.formatPercent(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = rateColor)
             }
-
-            // ====== Row 2: 近1年 | 净值(日期) ======
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            // Row 2: 近1年 | 净值(date)
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("近1年 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(return1Y?.formatPercent() ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if ((return1Y ?: 0.0) >= 0) UpRed else DownGreen)
@@ -87,62 +64,39 @@ fun FundCard(
                     if (navDateStr.isNotEmpty()) Text(" ($navDateStr)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
             }
-
-            // ====== Row 3: 前日涨跌额 | (更新标记) | 估值 | 时间 ======
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                // 左侧：涨跌额
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("涨跌 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(String.format("%+.4f", changeAmount), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = rateColor)
-                }
-                // 右侧：已更新标记 + 估值 + 时间
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (hasReplace) Text("(已更新) ", fontSize = 10.sp, color = UpRed.copy(alpha = 0.7f))
-                    if (showGSZ && !isEditing && gsz != null && gsz > 0) {
+            // Row 3: 估值(showGSZ控制) | 更新时间
+            if (showGSZ && !isEditing) {
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("估值 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(gsz.toString(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("  ", fontSize = 11.sp)
+                        Text(if (gsz != null && gsz > 0) gsz.toString() else "--", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        if (hasReplace) Text(" (已更新)", fontSize = 10.sp, color = UpRed.copy(alpha = 0.7f))
                     }
                     Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
-
-            // ====== 编辑模式 ======
-            if (isEditing) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = if (item.entity.shares > 0) item.entity.shares.toString() else "",
-                        onValueChange = { v -> v.toDoubleOrNull()?.let { onSharesChange(it) } },
-                        label = { Text("持有份额", fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall
-                    )
-                    OutlinedTextField(
-                        value = if (item.entity.costPrice > 0) item.entity.costPrice.toString() else "",
-                        onValueChange = { v -> v.toDoubleOrNull()?.let { onCostChange(it) } },
-                        label = { Text("成本价", fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall
-                    )
-                    IconButton(onClick = onToggleFavorite) {
-                        Icon(if (item.entity.isFavorite) Icons.Default.Star else Icons.Default.StarBorder, "关注", tint = if (item.entity.isFavorite) UpRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                    }
+            } else if (!showGSZ && !isEditing) {
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.End) {
+                    Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-
-            // ====== 持有额/收益行 ======
-            if (!isEditing) {
-                val hasExtra = showAmount || showGains || showCost || showCostRate
-                if (hasExtra) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (showAmount) Column { Text("持有额", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.holdingAmount.formatAmount(), fontSize = 12.sp, fontWeight = FontWeight.Medium) }
-                        if (showGains) Column { Text("估算收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.estimatedGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.estimatedGain >= 0) UpRed else DownGreen) }
-                        if (showCost) Column { Text("持有收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.costGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGain >= 0) UpRed else DownGreen) }
-                        if (showCostRate && item.entity.costPrice > 0) Column { Text("持有收益率", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.costGainRate.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGainRate >= 0) UpRed else DownGreen) }
-                    }
+            // 编辑模式
+            if (isEditing) {
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(if (item.entity.shares > 0) item.entity.shares.toString() else "", { v -> v.toDoubleOrNull()?.let { onSharesChange(it) } }, label = { Text("持有份额", fontSize = 11.sp) }, modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(if (item.entity.costPrice > 0) item.entity.costPrice.toString() else "", { v -> v.toDoubleOrNull()?.let { onCostChange(it) } }, label = { Text("成本价", fontSize = 11.sp) }, modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall)
+                    IconButton(onClick = onToggleFavorite) { Icon(if (item.entity.isFavorite) Icons.Default.Star else Icons.Default.StarBorder, "关注", tint = if (item.entity.isFavorite) UpRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) }
+                    IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) }
+                }
+            }
+            // 持有额/收益
+            if (!isEditing && (showAmount || showGains || showCost || showCostRate)) {
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (showAmount) Column { Text("持有额", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.holdingAmount.formatAmount(), fontSize = 12.sp, fontWeight = FontWeight.Medium) }
+                    if (showGains) Column { Text("估算收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.estimatedGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.estimatedGain >= 0) UpRed else DownGreen) }
+                    if (showCost) Column { Text("持有收益", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.costGain.formatGain(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGain >= 0) UpRed else DownGreen) }
+                    if (showCostRate && item.entity.costPrice > 0) Column { Text("持有收益率", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(item.costGainRate.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (item.costGainRate >= 0) UpRed else DownGreen) }
                 }
             }
         }
