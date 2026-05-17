@@ -12,10 +12,8 @@ import javax.inject.Singleton
 
 @Singleton
 class FundRepository @Inject constructor(
-    private val fundApi: FundApi,
-    private val fundDao: FundDao,
-    private val indexDao: IndexDao,
-    private val groupDao: GroupDao
+    private val fundApi: FundApi, private val fundDao: FundDao,
+    private val indexDao: IndexDao, private val groupDao: GroupDao
 ) {
     fun getAllFunds(): Flow<List<FundEntity>> = fundDao.getAllFunds()
     fun getFundsByGroup(group: String): Flow<List<FundEntity>> = if (group == "全部") fundDao.getAllFunds() else fundDao.getFundsByGroup(group)
@@ -49,4 +47,5 @@ class FundRepository @Inject constructor(
     suspend fun getMarketFundFlow(klt: Int = 1, lmt: Int = 0): FundFlowResponse? { return try { fundApi.getMarketFundFlow(klt = klt, lmt = lmt) } catch (e: Exception) { null } }
     suspend fun getMarketFundFlowDay(lmt: Int = 10): FundFlowResponse? { return try { fundApi.getMarketFundFlowDay(lmt = lmt) } catch (e: Exception) { null } }
     suspend fun getNorthSouthFlow(): NorthSouthFlowResponse? { return try { fundApi.getNorthSouthFlow() } catch (e: Exception) { null } }
+    suspend fun getBkzj(key: String = "f62", code: String = "m:90+t:2"): List<BkzjItem> { return try { fundApi.getBkzj(key = key, code = code).data?.diff ?: emptyList() } catch (e: Exception) { emptyList() } }
 }
