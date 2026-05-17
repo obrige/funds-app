@@ -40,12 +40,8 @@ class FundRepository @Inject constructor(
     suspend fun removeIndex(secId: String) = indexDao.deleteBySecId(secId)
     suspend fun initDefaultIndices() { if (indexDao.getCount() == 0) indexDao.insertIndices(listOf(IndexEntity(secId = "1.000001", name = "上证指数", code = "000001", market = 1), IndexEntity(secId = "0.399001", name = "深证成指", code = "399001", market = 0), IndexEntity(secId = "0.399006", name = "创业板指", code = "399006", market = 0))) }
     suspend fun getIndexQuotes(secIds: String): List<IndexQuoteItem> { return try { fundApi.getIndexQuote(secIds = secIds).data?.diff ?: emptyList() } catch (e: Exception) { emptyList() } }
-    fun getAllGroups(): Flow<List<GroupEntity>> = groupDao.getAllGroups()
-    suspend fun addGroup(name: String): Long = groupDao.insertGroup(GroupEntity(name = name))
-    suspend fun deleteGroup(group: GroupEntity) = groupDao.deleteGroup(group)
-    suspend fun getSectors(): List<SectorItem> { return try { fundApi.getSectors().data?.diff ?: emptyList() } catch (e: Exception) { emptyList() } }
+    suspend fun getSectorsByFs(fs: String): List<SectorItem> { return try { fundApi.getSectors(fs = fs).data?.diff ?: emptyList() } catch (e: Exception) { emptyList() } }
     suspend fun getMarketFundFlow(klt: Int = 1, lmt: Int = 0): FundFlowResponse? { return try { fundApi.getMarketFundFlow(klt = klt, lmt = lmt) } catch (e: Exception) { null } }
     suspend fun getMarketFundFlowDay(lmt: Int = 10): FundFlowResponse? { return try { fundApi.getMarketFundFlowDay(lmt = lmt) } catch (e: Exception) { null } }
     suspend fun getNorthSouthFlow(): NorthSouthFlowResponse? { return try { fundApi.getNorthSouthFlow() } catch (e: Exception) { null } }
-    suspend fun getBkzj(key: String = "f62", code: String = "m:90+t:2"): List<BkzjItem> { return try { fundApi.getBkzj(key = key, code = code).data?.diff ?: emptyList() } catch (e: Exception) { emptyList() } }
 }
