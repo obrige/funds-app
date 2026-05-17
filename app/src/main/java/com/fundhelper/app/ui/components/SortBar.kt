@@ -1,6 +1,8 @@
 package com.fundhelper.app.ui.components
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,7 +23,7 @@ fun SortBar(
     showCostRate: Boolean
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("排序:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
