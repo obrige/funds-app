@@ -59,11 +59,11 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             uiState.fundData?.let { data ->
-                val rate = data.gszzl ?: 0.0; val color = if (rate >= 0) UpRed else DownGreen
+                val rate = data.navChangeRate ?: data.gszzl ?: 0.0; val color = if (rate >= 0) UpRed else DownGreen
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                        Column { Text("估算涨跌幅", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(rate.formatPercent(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = color) }
-                        Column(horizontalAlignment = Alignment.End) { Text("估算净值", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(data.gsz?.toString() ?: "--", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = color); Text("更新: ${data.gzTime?.takeLast(8) ?: "--"} ${data.pDate?.let { "($it)" } ?: ""}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Column { Text("涨跌幅", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(rate.formatPercent(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = color) }
+                        Column(horizontalAlignment = Alignment.End) { Text("净值", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(data.gsz?.toString() ?: "--", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = color); Text("更新: ${data.gzTime?.takeLast(8) ?: "--"} ${data.pDate?.let { "($it)" } ?: ""}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
             }
@@ -90,12 +90,32 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
 @Composable fun FundTrendTab(uiState: FundDetailUiState) {
     val data = uiState.trendData
     if (data.isEmpty()) {
-        val navDate = uiState.fundData?.pDate
-        Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("暂无实时估值", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (navDate != null) Text("最近交易日: $navDate", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-                Text("仅交易时段提供实时估值数据", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+        // 非交易时段，回退显示最近已公布净值
+        val netData = uiState.netDiagramData
+        if (netData.isNotEmpty()) {
+            LazyColumn(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                item {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("非交易时段 — 最近已公布净值", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(4.dp))
+                            Row(Modifier.fillMaxWidth()) { Text("日期", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text("单位净值", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center); Text("涨跌幅", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.End) }
+                            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                            netData.takeLast(30).forEach { item ->
+                                val r = item.changeRate?.replace("%", "")?.toDoubleOrNull() ?: 0.0; val c = if (r >= 0) UpRed else DownGreen
+                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text(item.date?.takeLast(5) ?: "--", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Text(item.nav?.toString() ?: "--", fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), textAlign = TextAlign.Center); Text("${item.changeRate ?: "0"}%", fontSize = 12.sp, color = c, modifier = Modifier.weight(1f), textAlign = TextAlign.End) }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            val navDate = uiState.fundData?.pDate
+            Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("暂无数据", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (navDate != null) Text("最近交易日: $navDate", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                }
             }
         }
         return
