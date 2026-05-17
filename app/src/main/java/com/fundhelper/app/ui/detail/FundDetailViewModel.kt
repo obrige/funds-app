@@ -116,4 +116,54 @@ class FundDetailViewModel @Inject constructor(
             _uiState.update { it.copy(fund = updated) }
         }
     }
+
+    fun exportCsv(tabIndex: Int): String {
+        val state = _uiState.value
+        val name = state.fund?.name ?: fundCode
+        return when (tabIndex) {
+            0 -> {
+                val dwjz = state.trendDwjz
+                val header = "时间,估算涨跌幅(%),估算净值"
+                val rows = state.trendData.takeLast(50).mapNotNull { item ->
+                    val parts = item.split(",")
+                    if (parts.size >= 3) {
+                        val cr = parts[2].toDoubleOrNull() ?: 0.0
+                        val en = if (dwjz > 0) dwjz * (1 + cr * 0.01) else 0.0
+                        "${parts[0]},${"%.2f".format(cr)},${"%.4f".format(en)}"
+                    } else null
+                }
+                "$name-估值走势\n$header\n${rows.joinToString("\n")}"
+            }
+            1 -> {
+                val header = "股票名称,股票代码,涨跌幅(%),占比(%)"
+                val rows = state.positions.map { stock ->
+                    val q = state.stocks.find { it.code == stock.stockCode }
+                    val cr = q?.changeRate ?: 0.0
+                    "${stock.stockName},${stock.stockCode},${"%.2f".format(cr)},${"%.2f".format(stock.ratio)}"
+                }
+                "$name-持仓明细\n$header\n${rows.joinToString("\n")}"
+            }
+            2 -> {
+                val header = "日期,单位净值,累计净值,涨跌幅(%)"
+                val rows = state.netDiagramData.map { item ->
+                    "${item.date ?: "--"},${item.nav?.toString() ?: "--"},${item.totalNav?.toString() ?: "--"},${item.changeRate ?: "0"}"
+                }
+                "$name-历史净值\n$header\n${rows.joinToString("\n")}"
+            }
+            3 -> {
+                val header = "日期,涨幅(%),${state.yieldIndexName}(%)"
+                val rows = state.yieldDiagramData.map { item ->
+                    "${item.date ?: "--"},${"%.2f".format(item.yield ?: 0.0)},${"%.2f".format(item.indexYield ?: 0.0)}"
+                }
+                "$name-累计收益\n$header\n${rows.joinToString("\n")}"
+            }
+            4 -> {
+                val info = state.fundInfo
+                if (info != null) {
+                    "$name-基金概况\n基金名称,${info.name ?: "--"}\n基金代码,${info.code ?: "--"}\n基金类型,${info.type ?: "--"}\n基金公司,${info.company ?: "--"}\n基金经理,${info.manager ?: "--"}\n成立日期,${info.navDate ?: "--"}\n基金规模,${info.scale?.let { "${it / 100000000}亿" } ?: "--"}\n近1月,${info.return1M?.let { "%.2f%%".format(it) } ?: "--"}\n近3月,${info.return3M?.let { "%.2f%%".format(it) } ?: "--"}\n近6月,${info.return6M?.let { "%.2f%%".format(it) } ?: "--"}\n近1年,${info.return1Y?.let { "%.2f%%".format(it) } ?: "--"}"
+                } else ""
+            }
+            else -> ""
+        }
+    }
 }
