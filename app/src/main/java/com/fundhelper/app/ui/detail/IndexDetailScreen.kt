@@ -48,8 +48,6 @@ fun IndexDetailScreen(
             Text(secId, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(8.dp))
             Text("%.2f".format(price), fontSize = 36.sp, fontWeight = FontWeight.Bold, color = rateColor); Spacer(Modifier.height(4.dp))
             Text(changeRate.formatPercent(), fontSize = 18.sp, fontWeight = FontWeight.Medium, color = rateColor)
-
-            // 成交量 / 成交额
             if (amount > 0) { Spacer(Modifier.height(8.dp)); Text("成交额 %.2f亿".format(amount / 1_0000_0000), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
             // 周期选择
@@ -60,12 +58,11 @@ fun IndexDetailScreen(
                 }
             }
 
-            // 百分比K线图
+            // K线图 + 成交量
             Spacer(Modifier.height(12.dp))
             chartData?.let { cd ->
                 if (cd.prices.isNotEmpty()) {
                     PercentileChart(cd)
-                    // 成交量分析卡片
                     Spacer(Modifier.height(8.dp))
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -80,7 +77,21 @@ fun IndexDetailScreen(
 
             Spacer(Modifier.height(24.dp))
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
-                Column(Modifier.padding(12.dp)) { Text("指数信息", fontWeight = FontWeight.Medium, fontSize = 14.sp); Spacer(Modifier.height(8.dp)); DetailRow("指数名称", name); DetailRow("指数代码", code); DetailRow("市场代码", secId); DetailRow("最新价", "%.2f".format(price)); DetailRow("涨跌幅", changeRate.formatPercent()) }
+                Column(Modifier.padding(12.dp)) {
+                    Text("指数信息", fontWeight = FontWeight.Medium, fontSize = 14.sp); Spacer(Modifier.height(8.dp))
+                    DetailRow("指数名称", name); DetailRow("指数代码", code)
+                    DetailRow("最新价", "%.2f".format(price)); DetailRow("涨跌幅", changeRate.formatPercent())
+                    quote?.let { q ->
+                        if (q.high != null) DetailRow("最高", "%.2f".format(q.high))
+                        if (q.low != null) DetailRow("最低", "%.2f".format(q.low))
+                        if (q.open != null) DetailRow("开盘", "%.2f".format(q.open))
+                        if (q.prevClose != null) DetailRow("昨收", "%.2f".format(q.prevClose))
+                        if (q.amplitude != null) DetailRow("振幅", "%.2f%%".format(q.amplitude))
+                        if (q.volumeRatio != null) DetailRow("量比", "%.2f".format(q.volumeRatio))
+                        if (q.totalCap != null && q.totalCap > 0) DetailRow("总市值", if (q.totalCap > 1e12) "%.2f万亿".format(q.totalCap / 1e12) else "%.0f亿".format(q.totalCap / 1e8))
+                        if (q.circCap != null && q.circCap > 0) DetailRow("流通市值", if (q.circCap > 1e12) "%.2f万亿".format(q.circCap / 1e12) else "%.0f亿".format(q.circCap / 1e8))
+                    }
+                }
             }
         }
     }
