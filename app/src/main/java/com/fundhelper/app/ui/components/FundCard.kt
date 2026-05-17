@@ -82,11 +82,11 @@ fun FundCard(
                             Text(gszzl.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (gszzl >= 0) UpRed else DownGreen)
                         }
                     }
-                    Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(fd?.gzTime?.takeLast(5) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else if (!showGSZ && !isEditing) {
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.End) {
-                    Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(fd?.gzTime?.takeLast(5) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (isEditing) {
