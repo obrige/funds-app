@@ -76,40 +76,44 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 与原项目 App.vue getData 方法一致的数据处理逻辑
-     *
-     * 关键逻辑:
-     * - hasReplace = PDATE != null && GZTIME != null && PDATE == GZTIME.take(10)
-     *   (净值日期 == 估值日期, 说明当日净值已更新)
-     * - amount = NAV * shares (持有额始终用最新净值)
-     * - 当 hasReplace 时:
-     *   - effectiveNav = NAV
-     *   - gains = (NAV - NAV / (1 + NAVCHGRT * 0.01)) * shares
-     *   - effectiveRate = NAVCHGRT
-     * - 当 !hasReplace 时:
-     *   - gains = (GSZ - NAV) * shares
-     *   - effectiveRate = GSZZL
-     */
     private suspend fun refreshFundData() {
         if (currentFunds.isEmpty()) {
             _uiState.update { it.copy(funds = emptyList(), totalGain = 0.0, totalGainRate = 0.0, totalAmount = 0.0) }
             return
         }
 
-        val codes = currentFunds.joinToString(",") { it.code }
-        val apiData = repository.getFundRealtimeData(codes)
+        // 并行调用 fundgz 估值接口（每基金一次）
+        val gzResults = coroutineScope {
+            currentFunds.map { entity ->
+                async { entity to repository.getFundGz(entity.code) }
+            }.awaitAll()
+        }
 
         var totalAmount = 0.0
         var totalGain = 0.0
 
-        val displayItems = currentFunds.map { entity ->
-            val data = apiData.find { it.code == entity.code }
+        val displayItems = gzResults.map { (entity, response) ->
+            // fundgz 响应 → FundDataItem 映射
+            val data = response?.let {
+                FundDataItem(
+                    code = it.fundcode ?: entity.code,
+                    name = it.name ?: entity.name,
+                    pDate = it.jzrq,
+                    nav = it.dwjz,
+                    navChangeRate = it.gszzl,  // fundgz 无 NAVCHGRT，用 gszzl
+                    gsz = it.gsz,
+                    gszzl = it.gszzl,
+                    gzTime = it.gztime,
+                    ljjz = null,
+                    fType = null
+                )
+            }
+
             val shares = entity.shares
             val nav = data?.nav ?: 0.0
             val gsz = data?.gsz ?: nav
             val gszzl = data?.gszzl ?: 0.0
-            val navChangeRate = data?.navChangeRate ?: 0.0
+            val navChangeRate = data?.navChangeRate ?: gszzl
 
             val hasReplace = data?.pDate != null && data.gzTime != null
                     && data.pDate == data.gzTime.take(10)
