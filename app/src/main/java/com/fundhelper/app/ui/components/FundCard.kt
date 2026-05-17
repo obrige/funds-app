@@ -73,7 +73,7 @@ fun FundCard(
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("估值 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(if (gsz != null) gsz.toString() else "--", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text(if (gsz != null) gsz.toString() else (fd?.nav?.let { String.format("%.4f", it) } ?: "--"), fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         if (hasReplace) Text(" (已更新)", fontSize = 10.sp, color = UpRed.copy(alpha = 0.7f))
                         if (gszzl != null) {
                             Spacer(Modifier.width(6.dp))
