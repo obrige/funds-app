@@ -15,8 +15,12 @@ data class KlinePeriod(val label: String, val klt: Int, val lmt: Int)
 data class KlineChartData(
     val prices: List<Double>,
     val dates: List<String>,
-    val allTimeHigh: Double,  // 加载数据范围内的最高点
-    val currentPct: Double
+    val volumes: List<Double>,      // 成交量
+    val turnoverRates: List<Double>, // 换手率(%)
+    val allTimeHigh: Double,
+    val currentPct: Double,
+    val avgVolume: Double,          // 平均成交量
+    val volumeStatus: String        // 放量/缩量/持平
 )
 
 @HiltViewModel
@@ -64,13 +68,23 @@ class IndexDetailViewModel @Inject constructor(
         val p = _klinePeriod.value
         val response = repository.getIndexKline(secId, p.klt, p.lmt)
         val raw = response?.data?.klines ?: emptyList()
-        // 解析收盘价(字段2)和日期(字段0)
+        // 解析: 0=日期, 1=开盘, 2=收盘, 3=最高, 4=最低, 5=成交量, 6=成交额, 7=振幅, 8=涨跌幅, 9=涨跌额, 10=换手率
         val prices = raw.mapNotNull { it.split(",").getOrNull(2)?.toDoubleOrNull() }
         val dates = raw.mapNotNull { it.split(",").getOrNull(0)?.takeLast(5) }
-        // 加载范围内的历史最高
+        val volumes = raw.mapNotNull { it.split(",").getOrNull(5)?.toDoubleOrNull() }
+        val turnoverRates = raw.mapNotNull { it.split(",").getOrNull(10)?.toDoubleOrNull() }
         val allTimeHigh = prices.maxOrNull() ?: 0.0
         val currentPrice = _quote.value?.price ?: (prices.lastOrNull() ?: 0.0)
         val currentPct = if (allTimeHigh > 0) (currentPrice / allTimeHigh) * 100 else 100.0
-        _chartData.value = KlineChartData(prices, dates, allTimeHigh, currentPct)
+        // 成交量判定：最近一笔 vs 平均值
+        val avgVol = if (volumes.isNotEmpty()) volumes.sum() / volumes.size else 0.0
+        val lastVol = volumes.lastOrNull() ?: 0.0
+        val volumeStatus = when {
+            avgVol <= 0 -> "--"
+            lastVol >= avgVol * 1.5 -> "放量"
+            lastVol <= avgVol * 0.5 -> "缩量"
+            else -> "持平"
+        }
+        _chartData.value = KlineChartData(prices, dates, volumes, turnoverRates, allTimeHigh, currentPct, avgVol, volumeStatus)
     }
 }
