@@ -27,12 +27,13 @@ fun FundCard(
 ) {
     val fd = item.fundData
     val hasReplace = fd?.pDate != null && fd.gzTime != null && fd.pDate == fd.gzTime.take(10)
-    // 右上角涨跌幅：始终用已公布净值的实际涨跌幅（上个交易日），今天净值公布后自动切换
+    // 右上角：已公布净值实际涨跌幅
     val effectiveRate = fd?.navChangeRate ?: 0.0
     val rateColor = if (effectiveRate >= 0) UpRed else DownGreen
     val displayNav = item.fundNav ?: fd?.nav
     val navDateStr = item.navDate ?: fd?.pDate ?: ""
     val gsz = fd?.gsz
+    val gszzl = fd?.gszzl
     val return1Y = item.return1Y
 
     var sharesText by remember(item.entity.code, isEditing) {
@@ -49,6 +50,7 @@ fun FundCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            // Row 1: 名称+代码 | 涨跌幅(已公布)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     if (item.entity.isFavorite) { Icon(Icons.Default.Star, "关注", tint = UpRed, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)) }
@@ -58,6 +60,7 @@ fun FundCard(
                 }
                 Text(effectiveRate.formatPercent(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = rateColor)
             }
+            // Row 2: 近1年 | 净值(date)
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("近1年 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -69,12 +72,17 @@ fun FundCard(
                     if (navDateStr.isNotEmpty()) Text(" ($navDateStr)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
             }
+            // Row 3: 估值 + 预估涨跌幅
             if (showGSZ && !isEditing) {
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("估值 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(if (gsz != null && gsz > 0) gsz.toString() else "--", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         if (hasReplace) Text(" (已更新)", fontSize = 10.sp, color = UpRed.copy(alpha = 0.7f))
+                        if (gszzl != null && gszzl != 0.0) {
+                            Spacer(Modifier.width(6.dp))
+                            Text(gszzl.formatPercent(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (gszzl >= 0) UpRed else DownGreen)
+                        }
                     }
                     Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -83,6 +91,7 @@ fun FundCard(
                     Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            // 编辑模式
             if (isEditing) {
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -112,6 +121,7 @@ fun FundCard(
                     IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) }
                 }
             }
+            // 持有额/收益
             if (!isEditing && (showAmount || showGains || showCost || showCostRate)) {
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
