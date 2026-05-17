@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">自选基金助手</string>
+    <string name="app_name">基金助手</string>
     <string name="search_fund">搜索基金</string>
     <string name="add_fund">添加基金</string>
     <string name="settings">设置</string>
@@ -10,8 +10,6 @@
     <string name="no_funds">暂无自选基金\n点击右上角 + 添加</string>
     <string name="loading">加载中...</string>
     <string name="error_network">网络请求失败，请重试</string>
-    <string name="holiday_today">今日休市</string>
-    <string name="trading">交易中</string>
-    <string name="closed">已收盘</string>
-    <string name="not_started">未开盘</string>
+    <string name="about">关于</string>
+    <string name="about_desc">基金助手 - 实时查看基金涨跌幅，管理自选基金组合。</string>
 </resources>
