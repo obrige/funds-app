@@ -1,6 +1,7 @@
 package com.fundhelper.app.data.api
 
 import com.fundhelper.app.data.model.*
+import okhttp3.ResponseBody
 import retrofit2.http.GET
 import retrofit2.http.Query
 import retrofit2.http.Url
@@ -35,7 +36,7 @@ interface FundApi {
 
     @GET("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get") suspend fun getNorthSouthFlow(@Query("secid") secId: String = "1.000001", @Query("fields1") fields1: String = "f1,f2,f3,f7", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65", @Query("klt") klt: Int = 1, @Query("lmt") lmt: Int = 10, @Query("_") timestamp: Long = System.currentTimeMillis()): FundFlowResponse
 
-    // fundgz 估值接口
+    // fundgz 估值接口，返回原始 ResponseBody 由 Repository 手动解 JSONP
     @GET
-    suspend fun getFundGz(@Url url: String): FundGzResponse
+    suspend fun getFundGz(@Url url: String): ResponseBody
 }
