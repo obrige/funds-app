@@ -33,11 +33,13 @@ object AppModule {
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
         .add(Double::class.java, object : JsonAdapter<Double>() {
-            override fun fromJson(reader: JsonReader): Double? = when (reader.peek()) {
-                JsonReader.Token.NUMBER -> reader.nextDouble()
-                JsonReader.Token.STRING -> reader.nextString().toDoubleOrNull()
-                JsonReader.Token.NULL -> { reader.nextNull(); null }
-                else -> throw JsonDataException("Expected double but got ${reader.peek()}")
+            override fun fromJson(reader: JsonReader): Double? {
+                return when (reader.peek()) {
+                    JsonReader.Token.NUMBER -> reader.nextDouble()
+                    JsonReader.Token.STRING -> reader.nextString().toDoubleOrNull()
+                    JsonReader.Token.NULL -> { reader.nextNull(); null }
+                    else -> throw JsonDataException("Expected double but got ${reader.peek()}")
+                }
             }
             override fun toJson(writer: JsonWriter, value: Double?) {
                 value?.let { writer.value(it) } ?: writer.nullValue()
