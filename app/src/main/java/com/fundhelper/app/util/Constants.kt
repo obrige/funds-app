@@ -4,7 +4,8 @@ object Constants {
     val DEFAULT_INDICES = listOf(
         Triple("1.000001", "上证指数", "000001"),
         Triple("0.399001", "深证成指", "399001"),
-        Triple("0.399006", "创业板指", "399006")
+        Triple("0.399006", "创业板指", "399006"),
+        Triple("113.AUM", "沪金主连", "aum")
     )
 
     val AVAILABLE_INDICES = listOf(
