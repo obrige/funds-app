@@ -32,12 +32,8 @@ Android 原生 APP，实时查看基金涨跌幅，管理自选基金组合。
 
 [Actions](https://github.com/obrige/funds-app/actions) - 最新成功构建 - Artifacts
 
-## 数据来源
-
-基金数据来自东方财富开放 API，仅供学习交流使用。
-
 ---
 
-Copyright (c) 2026 F-Droid. All rights reserved.
+Copyright &copy; 2026 [F-Droid](https://linux.do/u/f-droid) retain all rights reserved.
 
-如果您喜欢这个工具，请给作者点个赞吧！
+如果您喜欢这个工具，请给作者点个赞吧！😊
