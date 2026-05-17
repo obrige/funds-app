@@ -94,14 +94,13 @@ class HomeViewModel @Inject constructor(
 
         val displayItems = gzResults.map { (entity, response) ->
             // fundgz 响应 → FundDataItem 映射（String 手动转 Double）
-            // navChangeRate 不设值 — fundgz 无实际涨跌幅，右上角不重复估值
             val data = response?.let {
                 FundDataItem(
                     code = it.fundcode ?: entity.code,
                     name = it.name ?: entity.name,
                     pDate = it.jzrq,
                     nav = it.dwjz?.toDoubleOrNull(),
-                    navChangeRate = null,
+                    navChangeRate = it.gszzl?.toDoubleOrNull(),
                     gsz = it.gsz?.toDoubleOrNull(),
                     gszzl = it.gszzl?.toDoubleOrNull(),
                     gzTime = it.gztime,
