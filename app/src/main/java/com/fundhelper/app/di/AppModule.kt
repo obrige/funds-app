@@ -7,6 +7,10 @@ import com.fundhelper.app.data.db.AppDatabase
 import com.fundhelper.app.data.db.FundDao
 import com.fundhelper.app.data.db.GroupDao
 import com.fundhelper.app.data.db.IndexDao
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.JsonDataException
+import com.squareup.moshi.JsonReader
+import com.squareup.moshi.JsonWriter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -28,6 +32,17 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
+        .add(Double::class.java, object : JsonAdapter<Double>() {
+            override fun fromJson(reader: JsonReader): Double? = when (reader.peek()) {
+                JsonReader.Token.NUMBER -> reader.nextDouble()
+                JsonReader.Token.STRING -> reader.nextString().toDoubleOrNull()
+                JsonReader.Token.NULL -> { reader.nextNull(); null }
+                else -> throw JsonDataException("Expected double but got ${reader.peek()}")
+            }
+            override fun toJson(writer: JsonWriter, value: Double?) {
+                value?.let { writer.value(it) } ?: writer.nullValue()
+            }
+        }.nullSafe())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
