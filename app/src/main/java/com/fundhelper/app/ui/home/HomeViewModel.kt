@@ -82,51 +82,68 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        // 并行调用 fundgz 估值接口（每基金一次）
-        val gzResults = coroutineScope {
-            currentFunds.map { entity ->
-                async { entity to repository.getFundGz(entity.code) }
-            }.awaitAll()
+        // 并行调用两个接口：fundgz（估值） + FundMNFInfo（实际净值/涨跌幅）
+        val codes = currentFunds.joinToString(",") { it.code }
+        val gzAndNav = coroutineScope {
+            val gzDeferred = async {
+                currentFunds.map { entity ->
+                    async { entity to repository.getFundGz(entity.code) }
+                }.awaitAll()
+            }
+            val navDeferred = async {
+                try { repository.getFundRealtimeData(codes) } catch (_: Exception) { null }
+            }
+            gzDeferred.await() to navDeferred.await()
         }
+        val (gzResults, navResponse) = gzAndNav
+
+        // 构建 code → 实际NAVCHGRT 的映射
+        val navMap = navResponse?.Datas?.associateBy { it.code } ?: emptyMap()
 
         var totalAmount = 0.0
         var totalGain = 0.0
 
         val displayItems = gzResults.map { (entity, response) ->
-            // fundgz 响应 → FundDataItem 映射（String 手动转 Double）
-            val data = response?.let {
-                FundDataItem(
-                    code = it.fundcode ?: entity.code,
-                    name = it.name ?: entity.name,
-                    pDate = it.jzrq,
-                    nav = it.dwjz?.toDoubleOrNull(),
-                    navChangeRate = it.gszzl?.toDoubleOrNull(),
-                    gsz = it.gsz?.toDoubleOrNull(),
-                    gszzl = it.gszzl?.toDoubleOrNull(),
-                    gzTime = it.gztime,
-                    ljjz = null,
-                    fType = null
-                )
-            }
+            // 优先从 FundMNFInfo 拿实际净值/涨跌幅，fallback 到 fundgz 估值
+            val navItem = navMap[entity.code]
+            val realNav = navItem?.nav ?: response?.dwjz?.toDoubleOrNull()
+            val realNavChangeRate = navItem?.navChangeRate // NAVCHGRT 真实涨跌幅
+            val pDate = navItem?.pDate ?: response?.jzrq
+            val gsz = response?.gsz?.toDoubleOrNull()
+            val gszzl = response?.gszzl?.toDoubleOrNull()
+            val gzTime = response?.gztime
+
+            val data = FundDataItem(
+                code = entity.code,
+                name = navItem?.name ?: response?.name ?: entity.name,
+                pDate = pDate,
+                nav = realNav,
+                navChangeRate = realNavChangeRate,
+                gsz = gsz,
+                gszzl = gszzl,
+                gzTime = gzTime,
+                ljjz = null,
+                fType = null
+            )
 
             val shares = entity.shares
-            val nav = data?.nav ?: 0.0
-            val gsz = data?.gsz ?: nav
-            val gszzl = data?.gszzl ?: 0.0
-            val navChangeRate = data?.navChangeRate ?: gszzl
+            val nav = data.nav ?: 0.0
+            val gszVal = data.gsz ?: nav
+            val gszzlVal = data.gszzl ?: 0.0
+            val navChangeRate = data.navChangeRate ?: gszzlVal
 
-            val hasReplace = data?.pDate != null && data.gzTime != null
+            val hasReplace = data.pDate != null && data.gzTime != null
                     && data.pDate == data.gzTime.take(10)
 
-            val effectiveNav = if (hasReplace) nav else gsz
-            val effectiveRate = if (hasReplace) navChangeRate else gszzl
+            val effectiveNav = if (hasReplace) nav else gszVal
+            val effectiveRate = if (hasReplace) navChangeRate else gszzlVal
 
             val amount = nav * shares
-            val gains = if (shares > 0 && data != null) {
+            val gains = if (shares > 0) {
                 if (hasReplace) {
                     (nav - nav / (1 + navChangeRate * 0.01)) * shares
                 } else {
-                    (gsz - nav) * shares
+                    (gszVal - nav) * shares
                 }
             } else 0.0
 
@@ -151,29 +168,15 @@ class HomeViewModel @Inject constructor(
             )
         }
 
-        // 并行获取基金概况（近一年收益率 + 净值日期）
-        val enrichedItems = coroutineScope {
-            displayItems.map { item ->
-                async {
-                    val info = repository.getFundInfo(item.entity.code)?.Datas
-                    item.copy(
-                        return1Y = info?.return1Y,
-                        fundNav = info?.nav ?: item.fundData?.nav,
-                        navDate = info?.navDate ?: item.fundData?.pDate
-                    )
-                }
-            }.awaitAll()
-        }
-
-        val totalGainRate = if (totalAmount > 0) totalGain / totalAmount * 100 else 0.0
+        val totalNav = displayItems.sumOf { it.fundData?.nav ?: 0.0 }
+        val totalGainRate = if (totalNav > 0) totalGain / (totalNav - totalGain) * 100 else 0.0
 
         _uiState.update {
             it.copy(
-                funds = enrichedItems,
-                totalAmount = totalAmount,
+                funds = displayItems,
                 totalGain = totalGain,
                 totalGainRate = totalGainRate,
-                tradingStatus = TradingTimeUtil.getTradingStatus()
+                totalAmount = totalAmount
             )
         }
     }
@@ -182,43 +185,31 @@ class HomeViewModel @Inject constructor(
         val indices = _uiState.value.indices
         if (indices.isEmpty()) return
 
-        val secIds = indices.joinToString(",") { it.entity.secId }
-        val quotes = repository.getIndexQuotes(secIds)
+        try {
+            val secIds = indices.joinToString(",") { it.entity.secId }
+            val response = repository.getIndexQuote(secIds)
+            val items = response.data?.diff ?: return
 
-        _uiState.update { state ->
-            state.copy(
-                indices = state.indices.map { item ->
-                    val quote = quotes.find { it.code == item.entity.code }
-                    item.copy(quote = quote)
-                }
-            )
-        }
+            _uiState.update { state ->
+                state.copy(
+                    indices = indices.map { display ->
+                        val match = items.find { it.code == display.entity.code }
+                        if (match != null) display.copy(item = match) else display
+                    }
+                )
+            }
+        } catch (_: Exception) { }
     }
 
-    fun addFund(code: String, name: String) {
+    fun addFund(fund: FundEntity) {
         viewModelScope.launch {
-            repository.addFund(code, name)
+            repository.addFund(fund)
         }
     }
 
     fun removeFund(code: String) {
         viewModelScope.launch {
             repository.removeFund(code)
-        }
-    }
-
-    fun toggleFavorite(code: String) {
-        viewModelScope.launch {
-            val fund = currentFunds.find { it.code == code }
-            fund?.let {
-                val newFav = !it.isFavorite
-                if (newFav) {
-                    currentFunds.filter { f -> f.isFavorite }.forEach { f ->
-                        repository.updateFavorite(f.code, false)
-                    }
-                }
-                repository.updateFavorite(code, newFav)
-            }
         }
     }
 
@@ -234,40 +225,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun toggleEditing() {
-        _uiState.update { it.copy(isEditing = !it.isEditing) }
-    }
-
-    fun reorderFunds(fromIndex: Int, toIndex: Int) {
-        val currentList = _uiState.value.funds.toMutableList()
-        if (fromIndex < currentList.size && toIndex < currentList.size) {
-            val item = currentList.removeAt(fromIndex)
-            currentList.add(toIndex, item)
-            _uiState.update { it.copy(funds = currentList) }
-            viewModelScope.launch {
-                repository.reorderFunds(currentList.map { it.entity.code })
-            }
-        }
-    }
-
-    fun searchFunds(keyword: String, onResult: (List<FundSearchItem>) -> Unit) {
+    fun toggleFavorite(code: String) {
         viewModelScope.launch {
-            val results = repository.searchFunds(keyword)
-            onResult(results)
+            repository.toggleFavorite(code)
         }
-    }
-
-    fun removeIndex(secId: String) {
-        viewModelScope.launch { repository.removeIndex(secId) }
-    }
-
-    fun addIndex(secId: String, name: String, code: String, market: Int) {
-        viewModelScope.launch {
-            repository.addIndex(IndexEntity(secId = secId, name = name, code = code, market = market))
-        }
-    }
-
-    fun refreshFundDataPublic() {
-        viewModelScope.launch { refreshFundData() }
     }
 }
