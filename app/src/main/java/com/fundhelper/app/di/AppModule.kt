@@ -18,29 +18,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import okhttp3.Interceptor
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
-import okhttp3.Response
-import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
-
-// 拦截 fundgz JSONP 响应，剥掉 jsonpgz(...) 包装
-class JsonpInterceptor : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
-        val response = chain.proceed(request)
-        if (!request.url.host.contains("fundgz")) return response
-        val body = response.body?.string() ?: return response
-        val json = body.removePrefix("jsonpgz(").removeSuffix(");")
-        val newBody = json.toResponseBody("application/json; charset=utf-8".toMediaTypeOrNull())
-        return response.newBuilder().body(newBody).build()
-    }
-}
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -68,7 +51,6 @@ object AppModule {
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
-        .addInterceptor(JsonpInterceptor())
         .addInterceptor(HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         })
