@@ -216,7 +216,7 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
 
 @Composable fun PositionDialog(currentShares: Double, onDismiss: () -> Unit, onAdd: (Double) -> Unit, onReduce: (Double) -> Unit) {
     var addShares by remember { mutableStateOf("") }; var reduceShares by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("调整仓位  当前: ${currentShares.toPlainString()}份") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("调整仓位  当前: ${currentShares.toString().removeSuffix(".0")}份") }, text = {
         Column {
             OutlinedTextField(addShares, { addShares = it }, label = { Text("买入份额") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             Spacer(Modifier.height(8.dp))
