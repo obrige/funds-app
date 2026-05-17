@@ -32,9 +32,11 @@ interface FundApi {
 
     @GET("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get") suspend fun getMarketFundFlow(@Query("secid") secId: String = "1.000001", @Query("fields1") fields1: String = "f1,f2,f3,f7", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65", @Query("klt") klt: Int = 1, @Query("lmt") lmt: Int = 0, @Query("_") timestamp: Long = System.currentTimeMillis()): FundFlowResponse
 
-    @GET("https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get") suspend fun getMarketFundFlowDay(@Query("secid") secId: String = "1.000001", @Query("fields1") fields1: String = "f1,f2,f3,f7", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65", @Query("klt") klt: Int = 101, @Query("lmt") lmt: Int = 10, @Query("_") timestamp: Long = System.currentTimeMillis()): FundFlowResponse
+    @GET("https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get") suspend fun getMarketFundFlowDay(@Query("secid") secId: String = "1.000001", @Query("fields1") fields1: String = "f1,f2,f3,f7", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65", @Query("klt") klt: Int = 101, @Query("lmt") lmt: Int = 10, @Query("ut") ut: String = "b2884a393a59ad64002292a3e90d46a5", @Query("_") timestamp: Long = System.currentTimeMillis()): FundFlowResponse
 
-    @GET("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get") suspend fun getNorthSouthFlow(@Query("secid") secId: String = "1.000001", @Query("fields1") fields1: String = "f1,f2,f3,f7", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65", @Query("klt") klt: Int = 1, @Query("lmt") lmt: Int = 10, @Query("_") timestamp: Long = System.currentTimeMillis()): FundFlowResponse
+    @GET("https://push2.eastmoney.com/api/qt/kamt.rtmin/get") suspend fun getNorthSouthFlow(@Query("fields1") fields1: String = "f1,f2,f3,f4", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56", @Query("_") timestamp: Long = System.currentTimeMillis()): NorthSouthFlowResponse
+
+    @GET("https://datacenter-web.eastmoney.com/dataapi/bkzj/getbkzj") suspend fun getBkzj(@Query("key") key: String = "f62", @Query("code") code: String = "m:90+t:2", @Query("_") timestamp: Long = System.currentTimeMillis()): BkzjResponse
 
     // fundgz 估值接口，返回原始 ResponseBody 由 Repository 手动解 JSONP
     @GET
