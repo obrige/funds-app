@@ -53,8 +53,7 @@ data class FundDataItem(
     @Json(name = "FTYPE") val fType: String?
 )
 
-// fundgz.1234567.com.cn 估值接口响应（JSONP unwrap后）
-// 数值字段用 String 接收，避免 Moshi String→Double 类型转换问题
+// fundgz.1234567.com.cn 估值接口响应
 @JsonClass(generateAdapter = true)
 data class FundGzResponse(
     @Json(name = "fundcode") val fundcode: String?,
@@ -66,18 +65,11 @@ data class FundGzResponse(
     @Json(name = "gztime") val gztime: String?
 )
 
-// 导出导入数据结构
 @JsonClass(generateAdapter = true)
-data class ExportData(
-    val funds: List<FundEntity>,
-    val indices: List<IndexEntity>
-)
+data class ExportData(val funds: List<FundEntity>, val indices: List<IndexEntity>)
 
 @JsonClass(generateAdapter = true)
-data class FundSearchResponse(
-    val Datas: List<FundSearchItem>?,
-    val ErrCode: Int = 0
-)
+data class FundSearchResponse(val Datas: List<FundSearchItem>?, val ErrCode: Int = 0)
 
 @JsonClass(generateAdapter = true)
 data class FundSearchItem(
@@ -88,55 +80,42 @@ data class FundSearchItem(
 )
 
 @JsonClass(generateAdapter = true)
-data class FundBaseInfo(
-    @Json(name = "FTYPE") val type: String?
-)
+data class FundBaseInfo(@Json(name = "FTYPE") val type: String?)
 
 @JsonClass(generateAdapter = true)
-data class IndexQuoteResponse(
-    val data: IndexQuoteData?
-)
-
+data class IndexQuoteResponse(val data: IndexQuoteData?)
 @JsonClass(generateAdapter = true)
-data class IndexQuoteData(
-    val diff: List<IndexQuoteItem>?
-)
+data class IndexQuoteData(val diff: List<IndexQuoteItem>?)
 
 @JsonClass(generateAdapter = true)
 data class IndexQuoteItem(
     @Json(name = "f2") val price: Double?,
     @Json(name = "f3") val changeRate: Double?,
     @Json(name = "f4") val change: Double?,
+    @Json(name = "f6") val amount: Double?,
+    @Json(name = "f7") val amplitude: Double?,
+    @Json(name = "f8") val volumeRatio: Double?,
     @Json(name = "f12") val code: String?,
     @Json(name = "f13") val market: Int?,
     @Json(name = "f14") val name: String?,
-    @Json(name = "f6") val amount: Double?
-)
-
-// 指数K线数据
-@JsonClass(generateAdapter = true)
-data class IndexKlineResponse(
-    val data: IndexKlineData?
-)
-@JsonClass(generateAdapter = true)
-data class IndexKlineData(
-    val code: String?,
-    val market: Int?,
-    val name: String?,
-    val klines: List<String>?
+    @Json(name = "f15") val high: Double?,
+    @Json(name = "f16") val low: Double?,
+    @Json(name = "f17") val open: Double?,
+    @Json(name = "f18") val prevClose: Double?,
+    @Json(name = "f20") val totalCap: Double?,
+    @Json(name = "f21") val circCap: Double?
 )
 
 @JsonClass(generateAdapter = true)
-data class FundPositionResponse(
-    val Datas: FundPositionData?,
-    val Expansion: String?
-)
-
+data class IndexKlineResponse(val data: IndexKlineData?)
 @JsonClass(generateAdapter = true)
-data class FundPositionData(
-    val fundStocks: List<FundStockItem>?
-)
+data class IndexKlineData(val code: String?, val market: Int?, val name: String?, val klines: List<String>?)
 
+// ... [rest of models unchanged] ...
+@JsonClass(generateAdapter = true)
+data class FundPositionResponse(val Datas: FundPositionData?, val Expansion: String?)
+@JsonClass(generateAdapter = true)
+data class FundPositionData(val fundStocks: List<FundStockItem>?)
 @JsonClass(generateAdapter = true)
 data class FundStockItem(
     @Json(name = "GPDM") val stockCode: String,
@@ -147,10 +126,7 @@ data class FundStockItem(
 )
 
 @JsonClass(generateAdapter = true)
-data class FundInfoResponse(
-    val Datas: FundInfoData?
-)
-
+data class FundInfoResponse(val Datas: FundInfoData?)
 @JsonClass(generateAdapter = true)
 data class FundInfoData(
     @Json(name = "FCODE") val code: String?,
@@ -176,16 +152,11 @@ data class FundInfoData(
 )
 
 @JsonClass(generateAdapter = true)
-data class FundBonus(
-    @Json(name = "PDATE") val date: String?,
-    @Json(name = "CHGRATIO") val ratio: Double?
-)
-
+data class FundBonus(@Json(name = "PDATE") val date: String?, @Json(name = "CHGRATIO") val ratio: Double?)
 @JsonClass(generateAdapter = true)
 data class FundManagerResponse(val Datas: FundManagerData?)
 @JsonClass(generateAdapter = true)
 data class FundManagerData(val fundMManager: List<ManagerHistory>?, val MGRID: String?)
-
 @JsonClass(generateAdapter = true)
 data class ManagerHistory(
     @Json(name = "MGRID") val id: String?,
@@ -202,43 +173,25 @@ data class ManagerHistory(
 data class FundTrendResponse(val Datas: List<String>?, val Expansion: TrendExpansion?)
 @JsonClass(generateAdapter = true)
 data class TrendExpansion(@Json(name = "DWJZ") val dwjz: Double?)
-
 @JsonClass(generateAdapter = true)
 data class FundNetDiagramResponse(val Datas: List<FundNetDiagramItem>?, val Expansion: NetDiagramExpansion?)
 @JsonClass(generateAdapter = true)
-data class FundNetDiagramItem(
-    @Json(name = "DWJZ") val nav: Double?,
-    @Json(name = "LJJZ") val totalNav: Double?,
-    @Json(name = "FSRQ") val date: String?,
-    @Json(name = "JZZZL") val changeRate: String?
-)
+data class FundNetDiagramItem(@Json(name = "DWJZ") val nav: Double?, @Json(name = "LJJZ") val totalNav: Double?, @Json(name = "FSRQ") val date: String?, @Json(name = "JZZZL") val changeRate: String?)
 @JsonClass(generateAdapter = true)
 data class NetDiagramExpansion(@Json(name = "FCODE") val code: String?, @Json(name = "SHORTNAME") val name: String?)
-
 @JsonClass(generateAdapter = true)
 data class FundYieldDiagramResponse(val Datas: List<FundYieldItem>?, val Expansion: YieldExpansion?)
 @JsonClass(generateAdapter = true)
-data class FundYieldItem(
-    @Json(name = "YIELD") val yield: Double?,
-    @Json(name = "INDEXYIED") val indexYield: Double?,
-    @Json(name = "PDATE") val date: String?
-)
+data class FundYieldItem(@Json(name = "YIELD") val yield: Double?, @Json(name = "INDEXYIED") val indexYield: Double?, @Json(name = "PDATE") val date: String?)
 @JsonClass(generateAdapter = true)
 data class YieldExpansion(@Json(name = "INDEXNAME") val indexName: String?, @Json(name = "FCODE") val code: String?)
-
 @JsonClass(generateAdapter = true)
 data class FundHistoryNavResponse(val Datas: FundHistoryNavData?)
 @JsonClass(generateAdapter = true)
 data class FundHistoryNavData(val LSJZList: List<HistoryNavItem>?)
 @JsonClass(generateAdapter = true)
-data class HistoryNavItem(
-    @Json(name = "FSRQ") val date: String,
-    @Json(name = "DWJZ") val nav: String,
-    @Json(name = "LJJZ") val totalNav: String,
-    @Json(name = "JZZZL") val changeRate: String?
-)
+data class HistoryNavItem(@Json(name = "FSRQ") val date: String, @Json(name = "DWJZ") val nav: String, @Json(name = "LJJZ") val totalNav: String, @Json(name = "JZZZL") val changeRate: String?)
 
-// 行情中心
 @JsonClass(generateAdapter = true)
 data class SectorResponse(val data: SectorData?)
 @JsonClass(generateAdapter = true)
@@ -247,36 +200,29 @@ data class SectorData(val diff: List<SectorItem>?)
 data class SectorItem(
     @Json(name = "f2") val price: Double?,
     @Json(name = "f3") val changeRate: Double?,
+    @Json(name = "f8") val upCount: Double?,
+    @Json(name = "f9") val downCount: Double?,
     @Json(name = "f12") val code: String?,
     @Json(name = "f14") val name: String?,
     @Json(name = "f62") val mainNetInflow: Double?,
     @Json(name = "f184") val mainNetInflowRate: Double?
 )
 
-// 大盘资金 — API 返回 data.klines (CSV 字符串列表)
 @JsonClass(generateAdapter = true)
 data class FundFlowResponse(val data: FundFlowKlineData?)
 @JsonClass(generateAdapter = true)
 data class FundFlowKlineData(val klines: List<String>?)
 
-// 北向/南向 — API 返回 data.s2n/n2s (CSV 字符串列表)
 @JsonClass(generateAdapter = true)
 data class NorthSouthFlowResponse(val data: NorthSouthFlowData?)
 @JsonClass(generateAdapter = true)
 data class NorthSouthFlowData(val s2n: List<String>?, val n2s: List<String>?)
 
-// UI State
-
 data class FundDisplayItem(
-    val entity: FundEntity,
-    val fundData: FundDataItem? = null,
-    val estimatedGain: Double = 0.0,
-    val holdingAmount: Double = 0.0,
-    val costGain: Double = 0.0,
-    val costGainRate: Double = 0.0,
-    val return1Y: Double? = null,
-    val fundNav: Double? = null,
-    val navDate: String? = null
+    val entity: FundEntity, val fundData: FundDataItem? = null,
+    val estimatedGain: Double = 0.0, val holdingAmount: Double = 0.0,
+    val costGain: Double = 0.0, val costGainRate: Double = 0.0,
+    val return1Y: Double? = null, val fundNav: Double? = null, val navDate: String? = null
 )
 
 data class IndexDisplayItem(val entity: IndexEntity, val quote: IndexQuoteItem? = null)
@@ -285,35 +231,21 @@ data class HomeUiState(
     val funds: List<FundDisplayItem> = emptyList(),
     val indices: List<IndexDisplayItem> = emptyList(),
     val groups: List<GroupEntity> = emptyList(),
-    val currentGroup: String = "全部",
-    val isLoading: Boolean = false,
-    val isEditing: Boolean = false,
-    val tradingStatus: TradingStatus = TradingStatus.CLOSED,
-    val totalGain: Double = 0.0,
-    val totalGainRate: Double = 0.0,
-    val totalAmount: Double = 0.0
+    val currentGroup: String = "全部", val isLoading: Boolean = false,
+    val isEditing: Boolean = false, val tradingStatus: TradingStatus = TradingStatus.CLOSED,
+    val totalGain: Double = 0.0, val totalGainRate: Double = 0.0, val totalAmount: Double = 0.0
 )
 
 enum class TradingStatus { NOT_STARTED, TRADING, LUNCH_BREAK, CLOSED, HOLIDAY }
-
-enum class SortField(val label: String) {
-    NAME("名称"), CHANGE_RATE("涨跌幅"), AMOUNT("持有额"),
-    GAIN("估算收益"), COST_GAIN("持有收益"), COST_GAIN_RATE("持有收益率")
-}
+enum class SortField(val label: String) { NAME("名称"), CHANGE_RATE("涨跌幅"), AMOUNT("持有额"), GAIN("估算收益"), COST_GAIN("持有收益"), COST_GAIN_RATE("持有收益率") }
 
 data class FundDetailUiState(
-    val fund: FundEntity? = null,
-    val fundData: FundDataItem? = null,
-    val fundInfo: FundInfoData? = null,
-    val positions: List<FundStockItem> = emptyList(),
-    val positionDate: String? = null,
-    val stocks: List<IndexQuoteItem> = emptyList(),
-    val managerHistory: List<ManagerHistory> = emptyList(),
-    val trendData: List<String> = emptyList(),
-    val trendDwjz: Double = 0.0,
-    val historyNav: List<HistoryNavItem> = emptyList(),
+    val fund: FundEntity? = null, val fundData: FundDataItem? = null,
+    val fundInfo: FundInfoData? = null, val positions: List<FundStockItem> = emptyList(),
+    val positionDate: String? = null, val stocks: List<IndexQuoteItem> = emptyList(),
+    val managerHistory: List<ManagerHistory> = emptyList(), val trendData: List<String> = emptyList(),
+    val trendDwjz: Double = 0.0, val historyNav: List<HistoryNavItem> = emptyList(),
     val netDiagramData: List<FundNetDiagramItem> = emptyList(),
     val yieldDiagramData: List<FundYieldItem> = emptyList(),
-    val yieldIndexName: String = "沪深300",
-    val isLoading: Boolean = false
+    val yieldIndexName: String = "沪深300", val isLoading: Boolean = false
 )
