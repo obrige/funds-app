@@ -93,16 +93,16 @@ class HomeViewModel @Inject constructor(
         var totalGain = 0.0
 
         val displayItems = gzResults.map { (entity, response) ->
-            // fundgz 响应 → FundDataItem 映射
+            // fundgz 响应 → FundDataItem 映射（String 手动转 Double）
             val data = response?.let {
                 FundDataItem(
                     code = it.fundcode ?: entity.code,
                     name = it.name ?: entity.name,
                     pDate = it.jzrq,
-                    nav = it.dwjz,
-                    navChangeRate = it.gszzl,  // fundgz 无 NAVCHGRT，用 gszzl
-                    gsz = it.gsz,
-                    gszzl = it.gszzl,
+                    nav = it.dwjz?.toDoubleOrNull(),
+                    navChangeRate = it.gszzl?.toDoubleOrNull(),
+                    gsz = it.gsz?.toDoubleOrNull(),
+                    gszzl = it.gszzl?.toDoubleOrNull(),
                     gzTime = it.gztime,
                     ljjz = null,
                     fType = null
