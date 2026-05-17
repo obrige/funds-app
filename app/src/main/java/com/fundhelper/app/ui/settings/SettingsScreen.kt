@@ -140,7 +140,7 @@ fun SettingsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("自选基金助手 v1.0.0", fontWeight = FontWeight.Medium)
+                        Text("基金助手 v1.0.0", fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "基于Chrome扩展移植的Android原生APP\n数据来源：天天基金",
@@ -176,3 +176,4 @@ fun SettingsSwitch(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+//about
