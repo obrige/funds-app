@@ -27,13 +27,19 @@ fun FundCard(
 ) {
     val fd = item.fundData
     val hasReplace = fd?.pDate != null && fd.gzTime != null && fd.pDate == fd.gzTime.take(10)
-    // 涨跌幅: 优先用 NAVCHGRT（最新交易日真实涨跌幅）
     val effectiveRate = fd?.navChangeRate ?: fd?.gszzl ?: 0.0
     val rateColor = if (effectiveRate >= 0) UpRed else DownGreen
     val displayNav = item.fundNav ?: fd?.nav
     val navDateStr = item.navDate ?: fd?.pDate ?: ""
     val gsz = fd?.gsz
     val return1Y = item.return1Y
+
+    var sharesText by remember(item.entity.code, isEditing) {
+        mutableStateOf(if (item.entity.shares > 0) item.entity.shares.toPlainString() else "")
+    }
+    var costText by remember(item.entity.code, isEditing) {
+        mutableStateOf(if (item.entity.costPrice > 0) item.entity.costPrice.toPlainString() else "")
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(enabled = !isEditing) { onClick() },
@@ -42,7 +48,6 @@ fun FundCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            // Row 1: 名称+代码 | 涨跌幅
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     if (item.entity.isFavorite) { Icon(Icons.Default.Star, "关注", tint = UpRed, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)) }
@@ -52,7 +57,6 @@ fun FundCard(
                 }
                 Text(effectiveRate.formatPercent(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = rateColor)
             }
-            // Row 2: 近1年 | 净值(date)
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("近1年 ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -64,7 +68,6 @@ fun FundCard(
                     if (navDateStr.isNotEmpty()) Text(" ($navDateStr)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
             }
-            // Row 3: 估值(showGSZ控制) | 更新时间
             if (showGSZ && !isEditing) {
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -79,17 +82,35 @@ fun FundCard(
                     Text(fd?.gzTime?.takeLast(8) ?: "--", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            // 编辑模式
             if (isEditing) {
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(if (item.entity.shares > 0) item.entity.shares.toString() else "", { v -> v.toDoubleOrNull()?.let { onSharesChange(it) } }, label = { Text("持有份额", fontSize = 11.sp) }, modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(if (item.entity.costPrice > 0) item.entity.costPrice.toString() else "", { v -> v.toDoubleOrNull()?.let { onCostChange(it) } }, label = { Text("成本价", fontSize = 11.sp) }, modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = sharesText,
+                        onValueChange = { v ->
+                            sharesText = v
+                            v.toDoubleOrNull()?.let { onSharesChange(it) }
+                        },
+                        label = { Text("持有份额", fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = costText,
+                        onValueChange = { v ->
+                            costText = v
+                            v.toDoubleOrNull()?.let { onCostChange(it) }
+                        },
+                        label = { Text("成本价", fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
                     IconButton(onClick = onToggleFavorite) { Icon(if (item.entity.isFavorite) Icons.Default.Star else Icons.Default.StarBorder, "关注", tint = if (item.entity.isFavorite) UpRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) }
                     IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) }
                 }
             }
-            // 持有额/收益
             if (!isEditing && (showAmount || showGains || showCost || showCostRate)) {
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
