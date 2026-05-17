@@ -41,4 +41,8 @@ interface FundApi {
     // fundgz 估值接口，返回原始 ResponseBody 由 Repository 手动解 JSONP
     @GET
     suspend fun getFundGz(@Url url: String): ResponseBody
+
+    // 指数K线数据
+    @GET("https://push2his.eastmoney.com/api/qt/stock/kline/get")
+    suspend fun getIndexKline(@Query("secid") secId: String, @Query("fields1") fields1: String = "f1,f2,f3,f4,f5,f6", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61", @Query("klt") klt: Int = 101, @Query("lmt") lmt: Int = 120, @Query("fqt") fqt: Int = 1, @Query("_") timestamp: Long = System.currentTimeMillis()): IndexKlineResponse
 }
