@@ -27,7 +27,8 @@ fun FundCard(
 ) {
     val fd = item.fundData
     val hasReplace = fd?.pDate != null && fd.gzTime != null && fd.pDate == fd.gzTime.take(10)
-    val effectiveRate = fd?.navChangeRate ?: fd?.gszzl ?: 0.0
+    // 右上角涨跌幅：始终用已公布净值的实际涨跌幅（上个交易日），今天净值公布后自动切换
+    val effectiveRate = fd?.navChangeRate ?: 0.0
     val rateColor = if (effectiveRate >= 0) UpRed else DownGreen
     val displayNav = item.fundNav ?: fd?.nav
     val navDateStr = item.navDate ?: fd?.pDate ?: ""
