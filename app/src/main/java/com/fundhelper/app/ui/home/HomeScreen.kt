@@ -10,13 +10,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fundhelper.app.data.model.*
 import com.fundhelper.app.ui.components.*
 import com.fundhelper.app.ui.theme.UpRed
 import com.fundhelper.app.util.TradingTimeUtil
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -178,6 +181,31 @@ fun HomeScreen(
                     onSharesChange = { shares -> viewModel.updateShares(item.entity.code, shares) },
                     onCostChange = { cost -> viewModel.updateCostPrice(item.entity.code, cost) }
                 )
+            }
+
+            // Footer
+            item {
+                val year = Calendar.getInstance().get(Calendar.YEAR)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Copyright © $year F-Droid retain all rights reserved.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "如果您喜欢这个工具，请给作者点个赞吧！😊",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             item { Spacer(modifier = Modifier.height(72.dp)) }
