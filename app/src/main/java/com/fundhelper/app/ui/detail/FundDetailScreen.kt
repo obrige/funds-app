@@ -166,9 +166,45 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
     }
 }
 
+// 计算最大回撤和修复天数
+fun calcMaxDrawdown(data: List<FundNetDiagramItem>): Triple<Double, String, Int> {
+    if (data.isEmpty()) return Triple(0.0, "", 0)
+    var peak = data.first().nav ?: 0.0
+    var maxDd = 0.0
+    var ddDate = ""
+    var recoveryDays = 0
+    var recovering = false
+    var daysSincePeak = 0
+    for (item in data) {
+        val nav = item.nav ?: 0.0
+        if (nav > peak) {
+            if (recovering) { recovering = false; recoveryDays = 0 }
+            peak = nav; daysSincePeak = 0
+        } else {
+            daysSincePeak++
+            val dd = (peak - nav) / peak * 100
+            if (dd > maxDd) { maxDd = dd; ddDate = item.date ?: ""; recovering = true; recoveryDays = daysSincePeak }
+            if (recovering) recoveryDays = daysSincePeak
+        }
+    }
+    return Triple(maxDd, ddDate, recoveryDays)
+}
+
 @Composable fun FundNetDiagramTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
     val chartRange by viewModel.chartRange.collectAsStateWithLifecycle(); val data = uiState.netDiagramData; var viewMode by remember { mutableStateOf(ViewMode.LINE) }; var searchDate by remember { mutableStateOf("") }; var newestFirst by remember { mutableStateOf(true) }
-    Column { ChartRangeSelector(chartRange, { viewModel.loadChart(it) }); ViewModeSelector(viewMode, { viewMode = it }); if (data.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }; DateSearchBar(searchDate, { searchDate = it }, data.size)
+    val (maxDd, ddDate, recoveryDays) = remember(data) { calcMaxDrawdown(data) }
+    Column { ChartRangeSelector(chartRange, { viewModel.loadChart(it) }); ViewModeSelector(viewMode, { viewMode = it }); if (data.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
+        // 最大回撤和修复时间卡片
+        if (data.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = DownGreen.copy(alpha = 0.08f))) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("最大回撤", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("${"%.2f".format(maxDd)}%", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = DownGreen) }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("发生日期", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(ddDate.ifEmpty { "--" }, fontSize = 13.sp, fontWeight = FontWeight.Medium) }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("修复天数", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(if (recoveryDays > 0) "${recoveryDays}天" else "--", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = UpRed) }
+                }
+            }
+        }
+        if (viewMode == ViewMode.LIST) DateSearchBar(searchDate, { searchDate = it }, data.size)
         when (viewMode) {
             ViewMode.LINE -> CanvasLineChart(data.map { it.nav ?: 0.0 }, data.map { it.date ?: "" }, Modifier.fillMaxWidth().padding(12.dp))
             ViewMode.BAR -> SimpleLineChart(data.map { it.nav ?: 0.0 }, data.map { it.date?.takeLast(5) ?: "" }, Modifier.fillMaxWidth().padding(12.dp))
@@ -179,7 +215,7 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
 
 @Composable fun FundYieldDiagramTab(uiState: FundDetailUiState, viewModel: FundDetailViewModel) {
     val chartRange by viewModel.chartRange.collectAsStateWithLifecycle(); val data = uiState.yieldDiagramData; val indexName = uiState.yieldIndexName; var viewMode by remember { mutableStateOf(ViewMode.LINE) }; var searchDate by remember { mutableStateOf("") }
-    Column { ChartRangeSelector(chartRange, { viewModel.loadChart(it) }); ViewModeSelector(viewMode, { viewMode = it }); if (data.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }; DateSearchBar(searchDate, { searchDate = it }, data.size)
+    Column { ChartRangeSelector(chartRange, { viewModel.loadChart(it) }); ViewModeSelector(viewMode, { viewMode = it }); if (data.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }; if (viewMode == ViewMode.LIST) DateSearchBar(searchDate, { searchDate = it }, data.size)
         when (viewMode) {
             ViewMode.LINE -> CanvasLineChart(data.map { it.yield ?: 0.0 }, data.map { it.date ?: "" }, Modifier.fillMaxWidth().padding(12.dp))
             ViewMode.BAR -> SimpleLineChart(data.map { it.yield ?: 0.0 }, data.map { it.date?.takeLast(5) ?: "" }, Modifier.fillMaxWidth().padding(12.dp))
