@@ -63,7 +63,7 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                         Column { Text("涨跌幅", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(rate.formatPercent(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = color) }
-                        Column(horizontalAlignment = Alignment.End) { Text("净值", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(data.gsz?.toString() ?: "--", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = color); Text("更新: ${data.gzTime?.takeLast(8) ?: "--"} ${data.pDate?.let { "($it)" } ?: ""}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Column(horizontalAlignment = Alignment.End) { Text("净值", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(data.nav?.toString() ?: data.gsz?.toString() ?: "--", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = color); Text(data.pDate?.let { "净值日期: $it" } ?: "净值日期: --", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
             }
@@ -90,7 +90,6 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
 @Composable fun FundTrendTab(uiState: FundDetailUiState) {
     val data = uiState.trendData
     if (data.isEmpty()) {
-        // 非交易时段，回退显示最近已公布净值
         val netData = uiState.netDiagramData
         if (netData.isNotEmpty()) {
             LazyColumn(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -190,76 +189,42 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
             val lp = Path(); data.forEachIndexed { i, v -> val x = pad + i * sX; val y = pad + dH * (1 - ((v - minV) / rng)).toFloat(); if (i == 0) lp.moveTo(x, y) else lp.lineTo(x, y) }; drawPath(lp, lc, style = Stroke(2.5f))
             if (data.isNotEmpty()) { val lx = pad + (data.size - 1) * sX; val ly = pad + dH * (1 - ((data.last() - minV) / rng)).toFloat(); drawCircle(lc, 5f, Offset(lx, ly)) }
         }
-        Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { val sc = minOf(6, labels.size); val st = if (sc > 1) (labels.size - 1) / (sc - 1) else 0; for (i in 0 until sc) { val idx = (i * st).coerceAtMost(labels.size - 1); Text(labels[idx].takeLast(5), fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { val sc = minOf(6, labels.size); val st = if (sc > 1) (labels.size - 1) / (sc - 1) else 0; for (i in 0 until sc) { val idx = (i * st).coerceAtMost(labels.size - 1); Text(labels[idx].takeLast(5), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
     } }
 }
 
 @Composable fun SimpleLineChart(data: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
-    if (data.isEmpty()) return; val minV = data.min(); val maxV = data.max(); val rng = if (maxV - minV == 0.0) 1.0 else maxV - minV
+    if (data.isEmpty()) return; val minV = data.min(); val maxV = data.max(); val rng = (maxV - minV).coerceAtLeast(0.01); val lc = if (data.last() >= data.first()) UpRed else DownGreen
     Card(modifier, shape = RoundedCornerShape(12.dp)) { Column(Modifier.padding(12.dp)) {
-        Text("最高: ${String.format("%.4f", maxV)}  最低: ${String.format("%.4f", minV)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(8.dp))
-        data.takeLast(20).forEachIndexed { i, v -> val ri = data.size - minOf(20, data.size) + i; val lb = if (ri < labels.size) labels[ri] else ""; Row(Modifier.fillMaxWidth().padding(vertical = 1.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text(lb, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Box(Modifier.weight(2f).height(12.dp)) { Box(Modifier.fillMaxHeight().fillMaxWidth(((v - minV) / rng).toFloat()).clip(RoundedCornerShape(4.dp)).background(if (v >= data.average()) UpRed.copy(alpha = 0.6f) else DownGreen.copy(alpha = 0.6f))) }; Text(String.format("%.4f", v), fontSize = 10.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.End) } }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("最高: ${String.format("%.4f", maxV)}", fontSize = 10.sp, color = UpRed); Text("最低: ${String.format("%.4f", minV)}", fontSize = 10.sp, color = DownGreen) }; Spacer(Modifier.height(8.dp))
+        Canvas(Modifier.fillMaxWidth().height(220.dp)) {
+            if (data.size < 2) return@Canvas; val w = size.width; val h = size.height; val pad = 20f; val dW = w - pad * 2; val dH = h - pad * 2; val bw = (dW / data.size) * 0.7f; val gap = (dW / data.size) * 0.3f
+            data.forEachIndexed { i, v -> val x = pad + i * (bw + gap); val bh = (dH * ((v - minV) / rng)).toFloat(); val y = pad + dH - bh; drawRect(if (v >= 0) UpRed else DownGreen, Offset(x, y), androidx.compose.ui.geometry.Size(bw, bh.coerceAtLeast(2f))) }
+        }
+        Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { val sc = minOf(6, labels.size); val st = if (sc > 1) (labels.size - 1) / (sc - 1) else 0; for (i in 0 until sc) { val idx = (i * st).coerceAtMost(labels.size - 1); Text(labels[idx], fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
     } }
 }
 
-@Composable fun InfoRow(label: String, value: String) { Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontSize = 13.sp) } }
-
-@Composable
-fun FundInfoTab(uiState: FundDetailUiState) {
+@Composable fun FundInfoTab(uiState: FundDetailUiState) {
     val info = uiState.fundInfo
-    if (info == null && uiState.managerHistory.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("加载中...", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        return
-    }
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (info != null) {
-            item {
-                Text("历史业绩排名", fontWeight = FontWeight.Bold, fontSize = 15.sp); Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    listOf("近1月" to (info.return1M to info.rank1M), "近3月" to (info.return3M to info.rank3M), "近6月" to (info.return6M to info.rank6M), "近1年" to (info.return1Y to info.rank1Y)).forEach { (l, p) ->
-                        val (v, r) = p; val c = if ((v ?: 0.0) >= 0) UpRed else DownGreen
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(l, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("${v ?: "--"}%", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = c); Text("排名: ${r ?: "--"}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    }
-                }
-            }
-            item {
-                HorizontalDivider(); Text("基本信息", fontWeight = FontWeight.Bold, fontSize = 15.sp); Spacer(Modifier.height(8.dp))
-                InfoRow("基金代码", info.code ?: "--"); InfoRow("基金类型", info.type ?: "--"); InfoRow("基金公司", info.company ?: "--"); InfoRow("基金经理", info.manager ?: "--")
-                InfoRow("单位净值", "${info.nav ?: "--"} (${info.navDate ?: "--"})"); InfoRow("累计净值", info.totalNav?.toString() ?: "--")
-                InfoRow("交易状态", "${info.buyStatus ?: "--"} ${info.sellStatus ?: "--"}")
-                info.scale?.let { InfoRow("基金规模", it.formatAmount()) }
-                info.bonus?.let { b -> InfoRow("分红信息", "${b.date}日 每份折算${b.ratio}份") }
-            }
-        }
-        if (uiState.managerHistory.isNotEmpty()) {
-            item { HorizontalDivider(); Text("基金经理变更记录", fontWeight = FontWeight.Bold, fontSize = 15.sp); Spacer(Modifier.height(8.dp)) }
-            items(uiState.managerHistory) { m ->
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                    Column(Modifier.padding(12.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(m.name ?: "--", fontWeight = FontWeight.Medium, fontSize = 14.sp); Text(if (m.endDate.isNullOrEmpty()) "现任" else "已离任", fontSize = 11.sp, color = if (m.endDate.isNullOrEmpty()) UpRed else MaterialTheme.colorScheme.onSurfaceVariant) }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("${m.startDate} ~ ${m.endDate ?: "至今"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("任职${m.days.toInt()}天", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        Text("任职涨幅: ${String.format("%.2f", m.growth)}%", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (m.growth >= 0) UpRed else DownGreen)
-                        m.resume?.takeIf { it.isNotBlank() }?.let { Spacer(Modifier.height(4.dp)); Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3) }
-                    }
-                }
-            }
-        }
+    if (info == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
+    LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Column(Modifier.padding(12.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("基金名称", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.name ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("基金代码", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.code ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("基金类型", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.type ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("基金公司", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.company ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("基金经理", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.manager ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("成立日期", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.navDate ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("基金规模", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.scale?.let { "${it / 100000000}亿" } ?: "--", fontSize = 13.sp, fontWeight = FontWeight.Medium) } } } }
+        item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Column(Modifier.padding(12.dp)) { Text("历史业绩", fontSize = 14.sp, fontWeight = FontWeight.Bold); Spacer(Modifier.height(6.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("近1月", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.return1M?.let { "${String.format("%.2f", it)}%" } ?: "--", fontSize = 13.sp, color = if ((info.return1M ?: 0.0) >= 0) UpRed else DownGreen) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("近3月", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.return3M?.let { "${String.format("%.2f", it)}%" } ?: "--", fontSize = 13.sp, color = if ((info.return3M ?: 0.0) >= 0) UpRed else DownGreen) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("近6月", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.return6M?.let { "${String.format("%.2f", it)}%" } ?: "--", fontSize = 13.sp, color = if ((info.return6M ?: 0.0) >= 0) UpRed else DownGreen) }; Spacer(Modifier.height(4.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("近1年", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(info.return1Y?.let { "${String.format("%.2f", it)}%" } ?: "--", fontSize = 13.sp, color = if ((info.return1Y ?: 0.0) >= 0) UpRed else DownGreen) } } } }
     }
 }
 
-@Composable
-fun PositionDialog(currentShares: Double, onDismiss: () -> Unit, onAdd: (Double) -> Unit, onReduce: (Double) -> Unit) {
-    var input by remember { mutableStateOf("") }; var isAdd by remember { mutableStateOf(true) }
-    AlertDialog(
-        onDismissRequest = onDismiss, title = { Text(if (isAdd) "加仓" else "减仓") },
-        text = {
-            Column {
-                Text("当前持有: ${String.format("%.2f", currentShares)} 份", fontSize = 14.sp); Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { FilterChip(isAdd, { isAdd = true }, label = { Text("加仓") }); FilterChip(!isAdd, { isAdd = false }, label = { Text("减仓") }) }
-                Spacer(Modifier.height(8.dp)); OutlinedTextField(input, { input = it }, label = { Text("份额") }, singleLine = true)
-            }
-        },
-        confirmButton = { TextButton({ input.toDoubleOrNull()?.let { if (isAdd) onAdd(it) else onReduce(it) } }) { Text("确定") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
-    )
+@Composable fun PositionDialog(currentShares: Double, onDismiss: () -> Unit, onAdd: (Double) -> Unit, onReduce: (Double) -> Unit) {
+    var addShares by remember { mutableStateOf("") }; var reduceShares by remember { mutableStateOf("") }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("调整仓位  当前: ${currentShares.toPlainString()}份") }, text = {
+        Column {
+            OutlinedTextField(addShares, { addShares = it }, label = { Text("买入份额") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            Spacer(Modifier.height(8.dp))
+            Button({ addShares.toDoubleOrNull()?.let { onAdd(it) } }, Modifier.fillMaxWidth()) { Text("确认加仓") }
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(reduceShares, { reduceShares = it }, label = { Text("卖出份额") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            Spacer(Modifier.height(8.dp))
+            Button({ reduceShares.toDoubleOrNull()?.let { onReduce(it) } }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = DownGreen)) { Text("确认减仓") }
+        }
+    }, confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
 }
