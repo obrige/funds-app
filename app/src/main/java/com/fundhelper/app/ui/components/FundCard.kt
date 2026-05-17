@@ -36,10 +36,10 @@ fun FundCard(
     val return1Y = item.return1Y
 
     var sharesText by remember(item.entity.code, isEditing) {
-        mutableStateOf(if (item.entity.shares > 0) item.entity.shares.toPlainString() else "")
+        mutableStateOf(if (item.entity.shares > 0) item.entity.shares.toString().removeSuffix(".0") else "")
     }
     var costText by remember(item.entity.code, isEditing) {
-        mutableStateOf(if (item.entity.costPrice > 0) item.entity.costPrice.toPlainString() else "")
+        mutableStateOf(if (item.entity.costPrice > 0) item.entity.costPrice.toString().removeSuffix(".0") else "")
     }
 
     Card(
