@@ -28,6 +28,7 @@ class FundRepository @Inject constructor(
     suspend fun importFunds(funds: List<FundEntity>) = fundDao.insertFunds(funds)
     suspend fun searchFunds(keyword: String): List<FundSearchItem> { return try { fundApi.searchFund(keyword = keyword).Datas ?: emptyList() } catch (e: Exception) { emptyList() } }
     suspend fun getFundRealtimeData(codes: String): List<FundDataItem> { if (codes.isBlank()) return emptyList(); return try { fundApi.getFundRealtimeData(codes = codes).Datas ?: emptyList() } catch (e: Exception) { emptyList() } }
+    suspend fun getFundGz(code: String): FundGzResponse? { return try { fundApi.getFundGz("https://fundgz.1234567.com.cn/js/$code.js") } catch (e: Exception) { null } }
     suspend fun getFundTrend(code: String): FundTrendResponse? { return try { fundApi.getFundTrend(code = code) } catch (e: Exception) { null } }
     suspend fun getFundNetDiagram(code: String, range: String = "y"): FundNetDiagramResponse? { return try { fundApi.getFundNetDiagram(code = code, range = range) } catch (e: Exception) { null } }
     suspend fun getFundYieldDiagram(code: String, range: String = "y"): FundYieldDiagramResponse? { return try { fundApi.getFundYieldDiagram(code = code, range = range) } catch (e: Exception) { null } }
