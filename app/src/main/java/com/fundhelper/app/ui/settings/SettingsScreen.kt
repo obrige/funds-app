@@ -1,5 +1,8 @@
 package com.fundhelper.app.ui.settings
 
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -8,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -24,6 +28,7 @@ fun SettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
     val prefs = viewModel.prefs
+    val context = LocalContext.current
 
     val darkMode by prefs.darkMode.collectAsState(initial = false)
     val showGSZ by prefs.showGSZ.collectAsState(initial = false)
@@ -32,6 +37,11 @@ fun SettingsScreen(
     val showCost by prefs.showCost.collectAsState(initial = false)
     val showCostRate by prefs.showCostRate.collectAsState(initial = false)
     val refreshInterval by prefs.refreshInterval.collectAsState(initial = 2)
+
+    var exportText by remember { mutableStateOf("") }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var importText by remember { mutableStateOf("") }
+    var showImportDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -126,10 +136,10 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { viewModel.exportConfig() }) {
-                                Text("导出配置")
-                            }
-                            OutlinedButton(onClick = { viewModel.importConfig() }) {
+                            OutlinedButton(onClick = {
+                                viewModel.exportConfig { json -> exportText = json; showExportDialog = true }
+                            }) { Text("导出配置") }
+                            OutlinedButton(onClick = { showImportDialog = true }) {
                                 Text("导入配置")
                             }
                         }
@@ -169,6 +179,49 @@ fun SettingsScreen(
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
+    }
+
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text("导出配置") },
+            text = { Text(exportText, fontSize = 10.sp, maxLines = 20) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setText(exportText)
+                    showExportDialog = false
+                    Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                }) { Text("复制到剪贴板") }
+            },
+            dismissButton = { TextButton(onClick = { showExportDialog = false }) { Text("关闭") } }
+        )
+    }
+
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text("导入配置") },
+            text = {
+                OutlinedTextField(
+                    value = importText,
+                    onValueChange = { importText = it },
+                    label = { Text("粘贴JSON配置") },
+                    modifier = Modifier.fillMaxWidth().height(200.dp)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (importText.isNotBlank()) {
+                        viewModel.importConfig(importText) { msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    showImportDialog = false
+                }) { Text("导入") }
+            },
+            dismissButton = { TextButton(onClick = { showImportDialog = false }) { Text("取消") } }
+        )
     }
 }
 
