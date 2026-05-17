@@ -66,6 +66,13 @@ data class FundGzResponse(
     @Json(name = "gztime") val gztime: String?
 )
 
+// 导出导入数据结构
+@JsonClass(generateAdapter = true)
+data class ExportData(
+    val funds: List<FundEntity>,
+    val indices: List<IndexEntity>
+)
+
 @JsonClass(generateAdapter = true)
 data class FundSearchResponse(
     val Datas: List<FundSearchItem>?,
