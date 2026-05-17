@@ -71,7 +71,7 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             uiState.fundData?.let { data ->
-                val rate = data.navChangeRate ?: data.gszzl ?: 0.0; val color = if (rate >= 0) UpRed else DownGreen
+                val rate = data.navChangeRate ?: 0.0; val color = if (rate >= 0) UpRed else DownGreen
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                         Column { Text("涨跌幅", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(rate.formatPercent(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = color) }
