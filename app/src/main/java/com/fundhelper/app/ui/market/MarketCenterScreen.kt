@@ -70,16 +70,20 @@ fun SectorTab(sectors: List<SectorItem>, isLoading: Boolean, vm: MarketViewModel
     if (isLoading) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
     if (sectors.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant) }; return }
     val filtered = remember(sectors, searchText) { if (searchText.isBlank()) sectors else sectors.filter { (it.name ?: "").contains(searchText, true) || (it.code ?: "").contains(searchText, true) } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    // 按绝对净流入排序（流入流出都突出显示）
+    val sorted = remember(filtered) { filtered.sortedByDescending { kotlin.math.abs(it.mainNetInflow ?: 0.0) } }
+    Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SectorType.entries.forEach { t -> Box(Modifier.clip(RoundedCornerShape(16.dp)).background(if (st == t) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant).clickable { vm.setSectorType(t) }.padding(horizontal = 12.dp, vertical = 5.dp), contentAlignment = Alignment.Center) { Text(t.label, fontSize = 12.sp, color = if (st == t) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
         OutlinedTextField(searchText, { searchText = it }, placeholder = { Text("搜索板块...", fontSize = 11.sp) }, singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(16.dp)) }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(44.dp))
-        Text("${st.label}主力净流入排行（亿元）共${filtered.size}个", fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        HBC(filtered.take(50).map { (it.mainNetInflow ?: 0.0) / 1_0000_0000 }, filtered.take(50).map { it.name ?: "" })
+        Text("${st.label}资金净流入排行（亿元）共${sorted.size}个", fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        HBC(sorted.take(50).map { (it.mainNetInflow ?: 0.0) / 1_0000_0000 }, sorted.take(50).map { it.name ?: "" })
         Spacer(Modifier.height(8.dp))
-        filtered.forEach { item -> val v = (item.mainNetInflow ?: 0.0) / 1_0000_0000; val c = if (v >= 0) UpRed else DownGreen; val up = item.upCount?.toInt() ?: 0; val down = item.downCount?.toInt() ?: 0; Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp), shape = RoundedCornerShape(4.dp)) { Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(item.name ?: "", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1); if (up > 0 || down > 0) Text("涨$up 跌$down", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Text(String.format("%.2f亿", v), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = c) } } }
-        Spacer(Modifier.height(24.dp))
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+            itemsIndexed(sorted) { _, item -> val v = (item.mainNetInflow ?: 0.0) / 1_0000_0000; val c = if (v >= 0) UpRed else DownGreen; val up = item.upCount?.toInt() ?: 0; val down = item.downCount?.toInt() ?: 0; Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 1.dp), shape = RoundedCornerShape(4.dp)) { Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(item.name ?: "", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1); if (up > 0 || down > 0) Text("涨$up 跌$down", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Text(String.format("%.2f亿", v), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = c) } } }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
     }
 }
 
