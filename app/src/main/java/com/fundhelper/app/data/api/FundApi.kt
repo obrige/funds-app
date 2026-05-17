@@ -26,9 +26,9 @@ interface FundApi {
 
     @GET("FundMNewApi/FundMNInfoNew") suspend fun getFundManager(@Query("FCODE") code: String, @Query("deviceid") deviceId: String = "Wap", @Query("plat") plat: String = "Wap", @Query("product") product: String = "EFund", @Query("version") version: String = "2.0.0", @Query("_") timestamp: Long = System.currentTimeMillis()): FundManagerResponse
 
-    @GET suspend fun getIndexQuote(@Url url: String = "https://push2.eastmoney.com/api/qt/ulist.np/get", @Query("fltt") fltt: Int = 2, @Query("fields") fields: String = "f2,f3,f4,f6,f12,f13,f14", @Query("secids") secIds: String, @Query("_") timestamp: Long = System.currentTimeMillis()): IndexQuoteResponse
+    @GET suspend fun getIndexQuote(@Url url: String = "https://push2.eastmoney.com/api/qt/ulist.np/get", @Query("fltt") fltt: Int = 2, @Query("fields") fields: String = "f2,f3,f4,f6,f7,f8,f12,f13,f14,f15,f16,f17,f18,f20,f21", @Query("secids") secIds: String, @Query("_") timestamp: Long = System.currentTimeMillis()): IndexQuoteResponse
 
-    @GET("https://push2.eastmoney.com/api/qt/clist/get") suspend fun getSectors(@Query("pn") pn: Int = 1, @Query("pz") pz: Int = 500, @Query("po") po: Int = 1, @Query("np") np: Int = 1, @Query("fields") fields: String = "f12,f13,f14,f62", @Query("fs") fs: String = "m:90+t:2", @Query("fid") fid: String = "f62", @Query("_") timestamp: Long = System.currentTimeMillis()): SectorResponse
+    @GET("https://push2.eastmoney.com/api/qt/clist/get") suspend fun getSectors(@Query("pn") pn: Int = 1, @Query("pz") pz: Int = 500, @Query("po") po: Int = 1, @Query("np") np: Int = 1, @Query("fields") fields: String = "f2,f3,f8,f9,f12,f14,f62,f184", @Query("fs") fs: String = "m:90+t:2", @Query("fid") fid: String = "f62", @Query("_") timestamp: Long = System.currentTimeMillis()): SectorResponse
 
     @GET("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get") suspend fun getMarketFundFlow(@Query("secid") secId: String = "1.000001", @Query("fields1") fields1: String = "f1,f2,f3,f7", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65", @Query("klt") klt: Int = 1, @Query("lmt") lmt: Int = 0, @Query("_") timestamp: Long = System.currentTimeMillis()): FundFlowResponse
 
@@ -38,11 +38,9 @@ interface FundApi {
 
     @GET("https://datacenter-web.eastmoney.com/dataapi/bkzj/getbkzj") suspend fun getBkzj(@Query("key") key: String = "f62", @Query("code") code: String = "m:90+t:2", @Query("_") timestamp: Long = System.currentTimeMillis()): BkzjResponse
 
-    // fundgz 估值接口，返回原始 ResponseBody 由 Repository 手动解 JSONP
     @GET
     suspend fun getFundGz(@Url url: String): ResponseBody
 
-    // 指数K线数据
     @GET("https://push2his.eastmoney.com/api/qt/stock/kline/get")
     suspend fun getIndexKline(@Query("secid") secId: String, @Query("fields1") fields1: String = "f1,f2,f3,f4,f5,f6", @Query("fields2") fields2: String = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61", @Query("klt") klt: Int = 101, @Query("lmt") lmt: Int = 120, @Query("fqt") fqt: Int = 1, @Query("_") timestamp: Long = System.currentTimeMillis()): IndexKlineResponse
 }
