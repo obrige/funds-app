@@ -53,6 +53,18 @@ data class FundDataItem(
     @Json(name = "FTYPE") val fType: String?
 )
 
+// fundgz.1234567.com.cn 估值接口响应 (JSONP unwrap后)
+@JsonClass(generateAdapter = true)
+data class FundGzResponse(
+    @Json(name = "fundcode") val fundcode: String?,
+    @Json(name = "name") val name: String?,
+    @Json(name = "jzrq") val jzrq: String?,
+    @Json(name = "dwjz") val dwjz: Double?,
+    @Json(name = "gsz") val gsz: Double?,
+    @Json(name = "gszzl") val gszzl: Double?,
+    @Json(name = "gztime") val gztime: String?
+)
+
 @JsonClass(generateAdapter = true)
 data class FundSearchResponse(
     val Datas: List<FundSearchItem>?,
