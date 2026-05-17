@@ -56,5 +56,5 @@ class FundRepository @Inject constructor(
     suspend fun getSectorsByFs(fs: String): List<SectorItem> { return try { fundApi.getSectors(fs = fs).data?.diff ?: emptyList() } catch (e: Exception) { emptyList() } }
     suspend fun getMarketFundFlow(klt: Int = 1, lmt: Int = 0): FundFlowResponse? { return try { fundApi.getMarketFundFlow(klt = klt, lmt = lmt) } catch (e: Exception) { null } }
     suspend fun getMarketFundFlowDay(lmt: Int = 10): FundFlowResponse? { return try { fundApi.getMarketFundFlowDay(lmt = lmt) } catch (e: Exception) { null } }
-    suspend fun getNorthSouthFlow(): FundFlowResponse? { return try { fundApi.getNorthSouthFlow() } catch (e: Exception) { null } }
+    suspend fun getNorthSouthFlow(): NorthSouthFlowResponse? { return try { fundApi.getNorthSouthFlow() } catch (e: Exception) { null } }
 }
