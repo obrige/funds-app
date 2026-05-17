@@ -29,7 +29,7 @@ fun FundCard(
 ) {
     val fd = item.fundData
     val hasReplace = fd?.pDate != null && fd.gzTime != null && fd.pDate == fd.gzTime.take(10)
-    val effectiveRate = fd?.navChangeRate ?: 0.0
+    val effectiveRate = fd?.navChangeRate ?: fd?.gszzl ?: 0.0
     val rateColor = if (effectiveRate >= 0) UpRed else DownGreen
     val displayNav = item.fundNav ?: fd?.nav
     val navDateStr = item.navDate ?: fd?.pDate ?: ""
