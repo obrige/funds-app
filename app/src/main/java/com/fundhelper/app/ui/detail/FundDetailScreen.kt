@@ -1,5 +1,7 @@
 package com.fundhelper.app.ui.detail
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +17,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +48,7 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPositionDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val tabs = listOf("估值走势", "持仓明细", "历史净值", "累计收益", "基金概况")
     Scaffold(
         topBar = {
@@ -52,6 +57,18 @@ fun FundDetailScreen(fundCode: String, onBack: () -> Unit, viewModel: FundDetail
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "返回") } },
                 actions = {
                     if ((uiState.fund?.shares ?: 0.0) > 0) IconButton(onClick = { showPositionDialog = true }) { Icon(Icons.Default.AccountBalance, "加仓/减仓") }
+                    IconButton(onClick = {
+                        val csv = viewModel.exportCsv(selectedTab)
+                        if (csv.isNotBlank()) {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, csv)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "导出CSV"))
+                        } else {
+                            Toast.makeText(context, "暂无数据", Toast.LENGTH_SHORT).show()
+                        }
+                    }) { Icon(Icons.Default.Share, "导出CSV") }
                     IconButton(onClick = { viewModel.loadAll() }) { Icon(Icons.Default.Refresh, "刷新") }
                 }
             )
