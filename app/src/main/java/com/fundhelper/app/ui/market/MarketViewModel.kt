@@ -34,11 +34,16 @@ class MarketViewModel @Inject constructor(
     val flowRange: StateFlow<FlowRange> = _flowRange.asStateFlow()
     val flowRanges = listOf(FlowRange("1日", true, 0), FlowRange("3日", false, 3), FlowRange("5日", false, 5), FlowRange("10日", false, 10), FlowRange("20日", false, 20))
 
+    // 缓存上一次非空数据，非交易日显示上个交易日
+    private var cachedNorth: List<String> = emptyList()
+    private var cachedSouth: List<String> = emptyList()
+    private var cachedMarket: List<String> = emptyList()
+
     fun loadAll() { viewModelScope.launch { _isLoading.value = true; launch { loadSectors() }; launch { loadMarketFlow() }; launch { loadNorthSouthFlow() }; _isLoading.value = false } }
     fun setFlowRange(range: FlowRange) { _flowRange.value = range; viewModelScope.launch { if (range.isIntraday) _marketFlow.value = repository.getMarketFundFlow()?.data?.klines ?: emptyList() else _marketFlow.value = repository.getMarketFundFlowDay(range.lmt)?.data?.klines ?: emptyList() } }
     fun setSectorType(type: SectorType) { _sectorType.value = type; loadSectors() }
 
     private fun loadSectors() { viewModelScope.launch { _sectors.value = try { repository.getSectorsByFs(_sectorType.value.fs) } catch (e: Exception) { emptyList() } } }
-    private suspend fun loadMarketFlow() { val r = _flowRange.value; if (r.isIntraday) _marketFlow.value = repository.getMarketFundFlow()?.data?.klines ?: emptyList() else _marketFlow.value = repository.getMarketFundFlowDay(r.lmt)?.data?.klines ?: emptyList() }
-    private suspend fun loadNorthSouthFlow() { val r = repository.getNorthSouthFlow(); _northFlow.value = r?.data?.s2n ?: emptyList(); _southFlow.value = r?.data?.n2s ?: emptyList() }
+    private suspend fun loadMarketFlow() { val r = _flowRange.value; if (r.isIntraday) _marketFlow.value = repository.getMarketFundFlow()?.data?.klines?.also { if (it.isNotEmpty()) cachedMarket = it } ?: cachedMarket else _marketFlow.value = repository.getMarketFundFlowDay(r.lmt)?.data?.klines?.also { if (it.isNotEmpty()) cachedMarket = it } ?: cachedMarket }
+    private suspend fun loadNorthSouthFlow() { val r = repository.getNorthSouthFlow(); _northFlow.value = (r?.data?.s2n ?: emptyList()).let { if (it.isNotEmpty()) { cachedNorth = it; it } else cachedNorth }; _southFlow.value = (r?.data?.n2s ?: emptyList()).let { if (it.isNotEmpty()) { cachedSouth = it; it } else cachedSouth } }
 }
