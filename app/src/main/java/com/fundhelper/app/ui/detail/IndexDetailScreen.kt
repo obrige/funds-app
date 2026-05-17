@@ -13,14 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,7 +48,9 @@ fun IndexDetailScreen(
             Text(secId, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(8.dp))
             Text("%.2f".format(price), fontSize = 36.sp, fontWeight = FontWeight.Bold, color = rateColor); Spacer(Modifier.height(4.dp))
             Text(changeRate.formatPercent(), fontSize = 18.sp, fontWeight = FontWeight.Medium, color = rateColor)
-            if (amount > 0) { Spacer(Modifier.height(12.dp)); Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) { Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("成交量", fontSize = 13.sp); Text("%.2f亿".format(amount / 1_0000_0000), fontSize = 13.sp, fontWeight = FontWeight.Medium) } } }
+
+            // 成交量 / 成交额
+            if (amount > 0) { Spacer(Modifier.height(8.dp)); Text("成交额 %.2f亿".format(amount / 1_0000_0000), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
             // 周期选择
             Spacer(Modifier.height(16.dp))
@@ -65,6 +65,16 @@ fun IndexDetailScreen(
             chartData?.let { cd ->
                 if (cd.prices.isNotEmpty()) {
                     PercentileChart(cd)
+                    // 成交量分析卡片
+                    Spacer(Modifier.height(8.dp))
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            val vColor = when(cd.volumeStatus) { "放量" -> UpRed; "缩量" -> DownGreen; else -> MaterialTheme.colorScheme.onSurfaceVariant }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("量能判定", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(cd.volumeStatus, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = vColor) }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("平均成交", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(if (cd.avgVolume > 1e8) "%.2f亿".format(cd.avgVolume / 1e8) else "%.0f万".format(cd.avgVolume / 1e4), fontSize = 12.sp, fontWeight = FontWeight.Medium) }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("换手率", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(if (cd.turnoverRates.isNotEmpty()) "%.2f%%".format(cd.turnoverRates.last()) else "--", fontSize = 12.sp, fontWeight = FontWeight.Medium) }
+                        }
+                    }
                 }
             }
 
@@ -82,13 +92,11 @@ fun PercentileChart(data: KlineChartData) {
     val currentPct = data.currentPct
     val color = if (currentPct >= 50) UpRed else DownGreen
     Column {
-        // 当前百分位和基准
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("历史最高: %.2f".format(data.allTimeHigh), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("当前: %.0f%%".format(currentPct), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
         }
         Spacer(Modifier.height(4.dp))
-        // 可滑动的折线图
         val chartWidth = (pcts.size * 8).coerceAtLeast(300).dp
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
             Column(Modifier.horizontalScroll(rememberScrollState()).padding(12.dp)) {
@@ -96,10 +104,8 @@ fun PercentileChart(data: KlineChartData) {
                     if (pcts.size < 2) return@Canvas
                     val w = size.width; val h = size.height; val pad = 12f; val dW = w - pad * 2; val dH = h - pad * 2
                     val sX = dW / (pcts.size - 1)
-                    // 50% 基准线
                     val midY = pad + dH * 0.5f
                     drawLine(Color.Gray.copy(alpha = 0.3f), Offset(pad, midY), Offset(pad + dW, midY), 1f)
-                    // 填充区域: >=50%红色, <50%绿色
                     pcts.forEachIndexed { i, pct ->
                         val x = pad + i * sX
                         val y = pad + dH * (1f - (pct / 100f).toFloat())
@@ -108,20 +114,12 @@ fun PercentileChart(data: KlineChartData) {
                         val barTop = if (pct >= 50) y else midY
                         drawRect(barColor, Offset(x - 1.5f, barTop), Size(3f, barHeight))
                     }
-                    // 折线
                     val lp = Path()
-                    pcts.forEachIndexed { i, pct ->
-                        val x = pad + i * sX
-                        val y = pad + dH * (1f - (pct / 100f).toFloat())
-                        if (i == 0) lp.moveTo(x, y) else lp.lineTo(x, y)
-                    }
+                    pcts.forEachIndexed { i, pct -> val x = pad + i * sX; val y = pad + dH * (1f - (pct / 100f).toFloat()); if (i == 0) lp.moveTo(x, y) else lp.lineTo(x, y) }
                     drawPath(lp, color, style = Stroke(2f))
-                    // 当前值圆点
-                    val lx = pad + (pcts.size - 1) * sX
-                    val ly = pad + dH * (1f - (pcts.last() / 100f).toFloat())
+                    val lx = pad + (pcts.size - 1) * sX; val ly = pad + dH * (1f - (pcts.last() / 100f).toFloat())
                     drawCircle(color, 5f, Offset(lx, ly))
                 }
-                // 日期标签
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.width(chartWidth), horizontalArrangement = Arrangement.SpaceBetween) {
                     data.dates.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
